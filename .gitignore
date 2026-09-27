@@ -1,0 +1,8 @@
+Mixly/
+Mixly.zip
+mixlyBuild/
+*.elf
+*.eep
+*.hex
+Thumbs.db
+.DS_Store
