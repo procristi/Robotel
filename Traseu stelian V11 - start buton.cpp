@@ -1,6 +1,8 @@
 // V11 follow rules. 11 goes straight. 10/01 use the V6 turn rules.
-// 00 keeps ultimaDirectie. Motors stay at 0 until pin 7 is pressed then released.
+// 00 keeps ultimaDirectie. Sensors and LEDs run from power-on.
+// Motors stay at 0 until pin 7 shows a press edge, then durataPornire ms later.
 // Pin 7 momentary button. Pressed value is butonApasat (1 on this board).
+// butonPrev 99 skips the first sample so a held or floating pin at boot is not a press.
 
 volatile int ServiceMode;
 volatile byte CodMotor;
@@ -22,6 +24,11 @@ volatile int motorStanga;
 volatile int motorDreapta;
 volatile int butonApasat;
 volatile int buton;
+volatile int pornit;
+volatile int butonFaza;
+volatile int durataPornire;
+volatile long tStartButon;
+volatile int butonPrev;
 
 void setup() {
   ServiceMode = 0;
@@ -44,6 +51,11 @@ void setup() {
   motorDreapta = 0;
   butonApasat = 1;
   buton = 0;
+  pornit = 0;
+  butonFaza = 0;
+  durataPornire = 2000;
+  tStartButon = 0;
+  butonPrev = 99;
 
   pinMode(9, INPUT);
   pinMode(3, INPUT);
@@ -61,25 +73,6 @@ void setup() {
   Serial.write(codViteza);
   Serial.write(0);
 
-  digitalWrite(6, HIGH);
-  digitalWrite(5, LOW);
-  while (true) {
-    buton = digitalRead(7);
-    if (buton == butonApasat) {
-      break;
-    }
-    delay(20);
-  }
-  digitalWrite(5, HIGH);
-  while (true) {
-    buton = digitalRead(7);
-    if (buton != butonApasat) {
-      break;
-    }
-    delay(20);
-  }
-  delay(200);
-
   while (true) {
     senzorStanga = digitalRead(9);
     senzorDreapta = digitalRead(3);
@@ -95,7 +88,23 @@ void setup() {
       digitalWrite(6, LOW);
     }
 
-    if (ServiceMode == 0) {
+    buton = digitalRead(7);
+    if (pornit == 0) {
+      if (butonPrev == 99) {
+        butonPrev = buton;
+      } else {
+        if (butonPrev != butonApasat && buton == butonApasat) {
+          tStartButon = millis();
+          butonFaza = 1;
+        }
+        butonPrev = buton;
+      }
+      if (butonFaza == 1) {
+        if ((millis() - tStartButon) >= durataPornire) {
+          pornit = 1;
+        }
+      }
+    } else if (ServiceMode == 0) {
       if (senzorStanga == 1 && senzorDreapta == 1) {
         stare = 0;
         ultimaDirectie = 0;
