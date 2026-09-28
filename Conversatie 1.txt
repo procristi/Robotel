@@ -1,0 +1,508 @@
+
+Loading older messages…
+nu este c++, este doar mixly
+Corect. Rămânem 100% în Mixly, numai cu blocuri. Exemplul cu millis() era doar ca să explic ideea; nu e nevoie să scrii C++.
+
+Pentru robotul tău aș face chiar mai simplu în Mixly, fără delay, folosind un contor de menținere a corecției. Avem variabilele:
+
+stare
+ultimaDirectie
+contorCorectie
+durataCorectie = 30
+La fiecare trecere prin bucla while TRUE:
+
+citește senzorStanga
+citește senzorDreapta
+Apoi:
+
+dacă stânga=0 ȘI dreapta=1
+    stare = 1
+    ultimaDirectie = 1
+    contorCorectie = durataCorectie
+
+dacă stânga=1 ȘI dreapta=0
+    stare = -1
+    ultimaDirectie = -1
+    contorCorectie = durataCorectie
+Aici este partea care ne interesează. Când semnalul dispare și ajungi la 00:
+
+dacă stânga=0 ȘI dreapta=0
+
+    dacă contorCorectie > 0
+        stare = ultimaDirectie
+        contorCorectie = contorCorectie - 1
+
+    altfel
+        stare = 0
+Deci dacă senzorul drept vede linia foarte scurt:
+
+01
+programul pune:
+
+stare = 1
+contorCorectie = 30
+După 2 ms semnalul poate deveni:
+
+00
+dar robotul nu trece imediat la mers drept. Continuă:
+
+stare = 1
+încă 30 de cicluri ale programului.
+
+Asta este exact ceea ce ne trebuie.
+
+Pentru 11 aș face de asemenea:
+
+dacă 11
+    dacă ultimaDirectie != 0
+        stare = ultimaDirectie
+pentru că într-o curbă de 90° nu vrem ca 11 să însemne automat „mergi drept”.
+
+Și foarte important: nu mai facem cele patru IF independente ca acum. Facem un singur lanț logic:
+
+IF 01
+   ...
+
+ELSE IF 10
+   ...
+
+ELSE IF 11
+   ...
+
+ELSE             ← 00
+   ...
+Asta evită ca aceeași buclă să-ți modifice stare de mai multe ori.
+
+Pentru început aș pune:
+
+durataCorectie = 20
+și testăm:
+
+dacă tot nu apucă să revină → 30, 40, 50;
+dacă începe să șerpuiască prea mult → 15, 10.
+Nu este un timp în milisecunde, ci numărul de cicluri Mixly, deci îl reglăm practic pe robot.
+
+Și aș păstra momentan exact comenzile tale de motor:
+
+stare = 0
+motor 1 = vitezaMare + 19
+motor 2 = vitezaMare
+
+stare = 1
+motor 1 = vitezaMare + 10
+motor 2 = vitezaMica
+
+stare = -1
+motor 1 = vitezaMica + 10
+motor 2 = vitezaMare
+Astfel schimbăm o singură problemă o dată: prelungirea reacției la senzor. După ce vedem că robotul recuperează linia, reglăm separat vitezele pentru curbele de 90°.
+
+Pot să-ți refac acum XML-ul Mixly pe care mi l-ai dat, cu exact această logică, astfel încât să-l imporți direct în Mixly.
+
+da
+
+Worked for 3m 48s
+
+
+
+
+
+
+Am refăcut fișierul Mixly pornind exact de la programul tău original. 
+
+Am făcut următoarele modificări:
+
+01 și 10 sunt acum tratate într-un singur IF / ELSE IF, deci o detecție nu mai poate fi suprascrisă în aceeași iterație.
+Când un senzor vede linia, direcția este memorată în ultimaDirectie. Dacă imediat după aceea apare 00, robotul continuă corecția, în loc să treacă instantaneu la mers drept.
+Am pus separat durataCorectieStanga = 12 și durataCorectieDreapta = 20. Dreapta este mai mare intenționat, deoarece pentru virajul dreapta lucrează în principal motorul stâng, care la tine este mai slab.
+Am observat încă ceva important: la mers drept aveai motorul stâng vitezaMare + 19, dar la virajul dreapta îl coborai la vitezaMare + 10. Tocmai când motorul stâng trebuie să rotească robotul, îi dădeai o compensare mai mică. Am schimbat și acolo la +19.
+Logica principală devine:
+
+00:
+    dacă mai există contorCorectie
+        păstrează virajul anterior
+        contorCorectie = contorCorectie - 1
+    altfel
+        stare = 0
+
+01:
+    stare = 1
+    ultimaDirectie = 1
+    contorCorectie = durataCorectieDreapta
+
+10:
+    stare = -1
+    ultimaDirectie = -1
+    contorCorectie = durataCorectieStanga
+
+11:
+    stare = ultimaDirectie
+Important: valorile 12 și 20 sunt număr de cicluri ale buclei Mixly, nu milisecunde.
+
+Aș testa exact această versiune prima dată. Dacă la curba de 90° spre stânga senzorul drept dă acel impuls scurt și robotul tot nu revine suficient, schimbă doar:
+
+durataCorectieDreapta
+20 → 30
+apoi 40 dacă este nevoie. Dacă începe să depășească linia în sens invers, coborâm valoarea. Asta ne permite să reglăm exact cât de mult trebuie „prelungit” acel semnal corect, fără să-l ignorăm. 
+
+
+line_follower_mixly_pulse_hold.xml
+Code
+tot nu e oi. am mai incercat si sa p8n senzorii pe mijloc sa poata detecta amandoi in acelai timp linia, dar linia e destul de sibtire (2cm) si senzorii nu vad lina mult deodata, e foarte scurt timpul cat o vad deodata
+
+Worked for 1m 14s
+Da. Asta îmi confirmă că nu trebuie să construim algoritmul în jurul stării 11. La o linie de numai 2 cm, cu doi senzori digitali, intervalul în care ambii văd simultan negrul este inevitabil foarte mic. Chiar dacă apropii senzorii, la curbe acel 11 devine și mai puțin predictibil.
+
+Aș reveni cu senzorii de o parte și de alta a liniei, astfel încât poziția normală să fie:
+
+senzor stânga     LINIE 2 cm     senzor dreapta
+      0                |                0
+
+                    00
+și aș trata 10, 01 și 11 mai degrabă ca evenimente, nu ca poziții stabile.
+
+Problema programelor de până acum este că am încercat să controlăm robotul direct din valoarea senzorilor:
+
+senzor -> comandă motor
+Pentru robotul tău trebuie să fie:
+
+senzor -> schimbă STAREA robotului
+                 ↓
+          starea comandă motoarele
+Algoritmul pe care l-aș folosi acum
+Pornim în:
+
+STARE = DREPT
+
+motor stânga = 99
+motor dreapta = 80
+Dacă apare 10:
+
+CORECTIE_STANGA
+dar nu facem imediat pivot brutal:
+
+motor stânga = ~60
+motor dreapta = 80
+Dacă după puțin timp obținem 00 stabil:
+
+→ a fost doar o abatere mică
+→ DREPT
+Aici rezolvăm oscilațiile mici.
+
+Dar dacă 10 continuă și robotul nu reușește să se recentreze după, să spunem, aproximativ 60–100 ms, atunci schimbăm starea în:
+
+CURBA_STANGA
+și acum facem:
+
+motor stânga = 0...10
+motor dreapta = 80
+Important: din momentul acesta nu mai ieșim din curbă doar pentru că apare 00.
+
+Asta este partea care lipsea până acum.
+
+Într-o curbă de 90° probabil vei avea ceva asemănător cu:
+
+00
+10
+10
+10
+00
+00
+01   <- foarte scurt
+00
+Programul trebuie să interpreteze asta astfel:
+
+10 persistent
+→ CURBA STÂNGA
+
+00
+→ continui CURBA STÂNGA
+
+01
+→ BINGO: am traversat linia cu senzorul drept
+Iar acel 01 poate dura 1 ms. Nu contează.
+
+În momentul în care l-am văzut o singură dată:
+
+amVazutSenzorOpus = 1
+și intrăm în:
+
+RECENTRARE_DREAPTA
+De aici nu mai contează că 01 dispare.
+
+Facem:
+
+motor stânga = 99
+motor dreapta = 40...50
+și continuăm această corecție până când avem:
+
+00 stabil
+pentru, de exemplu:
+
+15–25 ms
+Abia atunci:
+
+STARE = DREPT
+Asta este diferența esențială.
+
+Nu:
+
+01 apare
+→ virează dreapta
+
+01 dispare
+→ drept
+ci:
+
+01 apare chiar și pentru o singură citire
+→ intră în STAREA RECENTRARE_DREAPTA
+
+01 poate dispărea imediat
+→ rămân în RECENTRARE_DREAPTA
+
+00 stabil suficient
+→ ies din recentrare
+Pentru curba de 90° spre stânga
+Secvența completă devine:
+
+            00
+             ↓
+           DREPT
+             ↓
+            10
+             ↓
+     CORECTIE_STANGA
+             ↓
+  nu se centrează suficient
+             ↓
+       CURBA_STANGA
+             ↓
+     00 NU mă interesează
+             ↓
+  apare 01 chiar foarte scurt
+             ↓
+    RECENTRARE_DREAPTA
+             ↓
+      00 stabil 20 ms
+             ↓
+           DREPT
+Simetric pentru dreapta.
+
+Asta rezolvă și cele două situații diferite
+La o abatere mică:
+
+00 → 10 → 00
+robotul face doar o corecție ușoară.
+
+La un colț de 90°:
+
+00 → 10 → ... → 00 → 01 → 00
+algoritmul recunoaște că este în cursul unei manevre și nu confundă acel 00 intermediar cu poziția corectă.
+
+Asta este problema fundamentală a celor doi senzori: 00 singur nu spune unde este linia. Trebuie să știm cum am ajuns la 00.
+
+Nu mai folosim numărul de cicluri
+Mai este ceva ce aș schimba față de fișierul anterior. contorCorectie = 20 nu este o măsură bună, deoarece durata unei bucle se poate modifica, mai ales că programul tău trimite multe valori prin Serial. 
+
+În Mixly putem folosi blocul care returnează timpul de funcționare în milisecunde. Nu scriem C++.
+
+Astfel avem valori reale:
+
+pragCurba = 80 ms
+centrareStabila = 20 ms
+timpMinimRecentrare = 30 ms
+și comportamentul va fi repetabil indiferent cât de rapid se execută bucla.
+
+Vitezele cu care aș începe
+Ținând cont că motorul stâng este mai slab:
+
+DREPT
+stânga 99
+dreapta 80
+
+CORECȚIE STÂNGA
+stânga 60
+dreapta 80
+
+CORECȚIE DREAPTA
+stânga 99
+dreapta 50
+
+CURBĂ 90 STÂNGA
+stânga 0
+dreapta 80
+
+CURBĂ 90 DREAPTA
+stânga 99
+dreapta 0
+
+RECENTRARE după curbă stânga
+stânga 99
+dreapta 45
+
+RECENTRARE după curbă dreapta
+stânga 55
+dreapta 80
+Observă că recentrarea nu este la fel de violentă ca virajul de 90°. Asta este intenționat. Senzorul opus spune că ai depășit centrul; nu vrem să aruncăm robotul violent înapoi și să începem ping-pong-ul stânga-dreapta.
+
+Aș merge acum pe această variantă. Este fundamental diferită de cele precedente: memorează faza manevrei, nu încearcă să deducă totul din 00/01/10/11 la fiecare iterație. Pentru numai doi senzori digitali și o linie de 20 mm, asta are mult mai mult sens.
+
+
+VID_20260927_131019.mp4
+File
+
+Traseu stelian V2.mix
+Code
+da-mi o solutie. daca am setat viteza mica aproape ca merge uneori, dar chiar si asa am probleme.
+
+Worked for 8m 28s
+
+
+
+
+Analysis output 1
+Analysis output 1
+
+
+
+Analysis output 1
+Analysis output 1
+
+Analysis output 1
+Analysis output 1
+
+Analysis output 1
+Analysis output 1
+
+
+
+
+Am analizat filmarea și programul V2. Problema nu este că semnalul scurt este greșit, ci că programul îl folosește greșit: după ce începe un viraj, senzorul opus ajunge pe linie pentru foarte puțin timp, iar programul începe imediat să vireze în sens invers. La 90° asta produce exact ieșirea de pe traseu pe care o vezi.
+
+Am făcut o versiune nouă în Mixly, pornind de la fișierul tău actual:
+
+Descarcă Traseu Stelian V3 – viraj memorat
+
+Logica este acum diferită. De exemplu, la viraj stânga:
+
+senzor stânga vede linia
+        ↓
+MEMOREAZĂ: VIRAJ STÂNGA
+        ↓
+continuă stânga chiar dacă apare 00
+        ↓
+senzor dreapta vede linia
+(chiar și o singură citire!)
+        ↓
+VIRAJUL ESTE CONSIDERAT TERMINAT
+        ↓
+merge drept
+        ↓
+ignoră temporar senzorul dreapta
+până când acesta părăsește linia
+Deci acel impuls foarte scurt de care vorbeai nu trebuie să dureze suficient pentru a roti robotul. Trebuie doar să fie observat o singură dată. Din acel moment programul știe că a traversat linia cu senzorul opus.
+
+Am schimbat și vitezele separat. Mersul drept rămâne la 35, cu compensarea ta de +19 pe motorul stâng. La viraj stânga, motorul drept merge cu 50, iar stângul este oprit. La viraj dreapta, motorul stâng — cel mai slab — primește 70, iar dreptul este oprit. Astfel viteza mică de deplasare nu mai înseamnă automat și un viraj de 90° foarte slab.
+
+Mai este însă un lucru pe care l-aș schimba fizic după ce am văzut filmarea. Senzorii sunt prea departe în fața axei roților și destul de depărtați lateral. Asta explică de ce trec extrem de repede peste linia de 2 cm în timpul rotației. Nu trebuie să-i pui pe amândoi peste linie. Aș porni cu:
+
+punctele de detecție la aproximativ 25–30 mm unul de celălalt pentru linia de 20 mm;
+senzorii doar la aproximativ 30–45 mm în fața axei roților, nu atât de departe ca acum;
+aceeași înălțime față de traseu și linia, la mers drept, între senzori, deci normal 00.
+Asta este important: dacă rămân foarte în față, în timpul unei rotații viteza cu care senzorul mătură linia este mare, deci impulsul va fi inevitabil foarte scurt. Mutarea lor mai aproape de axa roților îl prelungește și reduce și oscilațiile la abateri mici.
+
+Aș testa V3 la vitezaMare = 35 exact așa cum este și cu senzorii mutați mai aproape de robot. Nu-i apropia atât de mult încât să urmărești 11; pentru linia ta de 2 cm, 11 nu trebuie să fie starea normală. 
+
+
+VID_20260927_134428.mp4
+File
+
+VID_20260927_135159.mp4
+File
+am pus programul tau, in ambele variante de senzori si apropiati si departati
+
+Worked for 9m 8s
+
+
+
+
+
+
+
+Am analizat ambele filmări. Acum se vede problema mult mai clar: V3-ul pe care ți l-am dat era greșit pentru comportamentul real al robotului. El memora orice atingere a unui senzor ca început de viraj și continua virajul până când ajungea la senzorul opus. În filmări, o abatere mică pe o porțiune dreaptă ajunge astfel să fie transformată într-un viraj mare și robotul pleacă de pe traseu înainte să ajungă măcar la colț.
+
+Am făcut o variantă nouă, cu două regimuri complet diferite:
+
+Descarcă V4 – corecții mici + curbe 90°
+
+La mers normal, nu mai există memorarea virajului:
+
+00 → drept
+
+10 → corecție UȘOARĂ stânga
+00 → imediat drept
+
+01 → corecție UȘOARĂ dreapta
+00 → imediat drept
+Asta este pentru oscilațiile și abaterile mici pe care le văd în ambele filmări.
+
+Pentru curbele de 90° folosesc acum tocmai observația ta: 11 poate exista doar foarte puțin timp, dar nu trebuie să dureze. Este suficient să-l citim o singură dată.
+
+Când apare:
+
+10 → 11
+programul știe că venea dinspre stânga și memorează:
+
+CURBĂ 90° STÂNGA
+La dreapta este simetric.
+
+După ce a intrat în acest mod, nu mai reacționează direct la fiecare 0/1, ci face trei faze:
+
+1. vede 11 → memorează curba
+2. continuă rotirea după ce 11 dispare
+3. așteaptă ca senzorul opus să traverseze linia
+4. apoi așteaptă 00 de 3 ori
+5. revine la DREPT
+Astfel, acel impuls foarte scurt al senzorului opus devine un reper, nu timpul efectiv în care motorul trebuie să reușească să întoarcă robotul.
+
+Am făcut și o modificare care cred că este foarte importantă pentru cazul tău: comenzile către motoare nu mai sunt trimise continuu în fiecare buclă. Sunt trimise doar când se schimbă starea. În rest, Arduino citește senzorii foarte repede. Asta crește mult șansa de a prinde acel 11 care durează foarte puțin.
+
+Pentru V4 aș folosi varianta cu senzorii apropiați, dar nu atât încât să stea amândoi pe linie la mers drept. Ținta este:
+
+mers drept:
+0   LINIE   0
+
+curbă / transversal:
+1     1
+doar foarte scurt
+Faptul că 11 durează puțin nu mai este o problemă în V4.
+
+Am pus vitezele inițiale astfel:
+
+DREPT:
+motor stâng  = 54
+motor drept  = 35
+
+corecție mică STÂNGA:
+30 / 35
+
+corecție mică DREAPTA:
+60 / 20
+
+90° STÂNGA:
+0 / 55
+
+90° DREAPTA:
+85 / 0
+Valorile sunt toate sus, ca variabile Mixly, ca să le poți modifica foarte ușor.
+
+Mai este însă o problemă independentă de program: driverul motorului stâng este defect. Ai demonstrat deja asta când ai inversat motoarele și problema a rămas pe același canal. +19 poate compensa aproximativ mersul drept, dar nu repară cuplul și comportamentul motorului la viteze mici. De aceea am făcut virajul dreapta mult mai puternic (85/0), fiindcă acolo tocmai motorul stâng trebuie să rotească robotul.
+
+Eu aș testa acum V4 cu senzorii apropiați. Dacă pe porțiunea dreaptă nu mai fuge, dar ratează 90°, atunci ne concentrăm exclusiv pe secvența 10 → 11 → ... și reglăm fazele. Dacă și pe drept fuge într-o anumită direcție, următorul lucru de făcut este driverul, nu algoritmul.
+
+Regulamentul NEXTLAB 2026 pentru Line Follower cere păstrarea configurației kitului și permite doar modificări/minore de montaj; deci pentru concurs aș înlocui modulul defect cu unul identic, nu cu un driver diferit. 
+ 
+
+
+
+
