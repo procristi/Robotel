@@ -9,9 +9,6 @@ namespace Robotel.LineFollower.Sketch;
 /// </summary>
 public static class V11HisterezisV3Sketch
 {
-    public static int ServiceMode;
-    public static byte CodMotor;
-    public static byte codViteza;
     public static int senzorStanga;
     public static int senzorDreapta;
     public static byte vitezaMica;
@@ -34,13 +31,11 @@ public static class V11HisterezisV3Sketch
     public static int curbaTrimisa;
     public static int motorStanga;
     public static int motorDreapta;
-    public static int butonApasat;
-    public static int stareButon;
+    public static int stareButonCurenta;
     public static int robotPornit;
-    public static int butonFaza;
     public static int durataPornire;
     public static long tStartButon;
-    public static int butonPrev;
+    public static int stareButonAnterior;
     public static int patternPrev;
     public static int linieInstabila;
     public static int ultimLateral;
@@ -51,9 +46,6 @@ public static class V11HisterezisV3Sketch
 
     public static void setup()
     {
-        ServiceMode = 0;
-        CodMotor = Constants.CodMotor;
-        codViteza = Constants.CodViteza;
         senzorStanga = 0;
         senzorDreapta = 0;
         vitezaMica = 40;
@@ -76,13 +68,11 @@ public static class V11HisterezisV3Sketch
         curbaTrimisa = 99;
         motorStanga = 0;
         motorDreapta = 0;
-        butonApasat = 1;
-        stareButon = 0;
+        stareButonCurenta = 0;
         robotPornit = 0;
-        butonFaza = 0;
         durataPornire = 2000;
         tStartButon = 0;
-        butonPrev = 99;
+        stareButonAnterior = 0;
         patternPrev = -1;
         linieInstabila = 0;
         ultimLateral = 0;
@@ -105,7 +95,7 @@ public static class V11HisterezisV3Sketch
         {
             senzorStanga = Pin.Citeste(Pins.SenzorStanga);
             senzorDreapta = Pin.Citeste(Pins.SenzorDreapta);
-            stareButon = Pin.Citeste(Pins.Buton);
+            stareButonCurenta = Pin.Citeste(Pins.Buton);
 
             Pin.DigitalWrite(Pins.BecDreapta, senzorDreapta == 1 ? PinState.High : PinState.Low);
             Pin.DigitalWrite(Pins.BecStanga, senzorStanga == 1 ? PinState.High : PinState.Low);
@@ -113,30 +103,19 @@ public static class V11HisterezisV3Sketch
 
             if (robotPornit == 0)
             {
-                if (butonPrev == 99)
+                if (stareButonAnterior == 0 && stareButonCurenta == 1)
                 {
-                    butonPrev = stareButon;
-                }
-                else
-                {
-                    if (butonPrev != butonApasat && stareButon == butonApasat)
-                    {
-                        tStartButon = millis();
-                        butonFaza = 1;
-                    }
-
-                    butonPrev = stareButon;
+                    tStartButon = millis();
                 }
 
-                if (butonFaza == 1)
+                stareButonAnterior = stareButonCurenta;
+
+                if (tStartButon != 0 && (millis() - tStartButon) >= durataPornire)
                 {
-                    if ((millis() - tStartButon) >= durataPornire)
-                    {
-                        robotPornit = 1;
-                    }
+                    robotPornit = 1;
                 }
             }
-            else if (ServiceMode == 0)
+            if (robotPornit == 1)
             {
                 int patternAcum;
                 if (senzorStanga == 1 && senzorDreapta == 1)
