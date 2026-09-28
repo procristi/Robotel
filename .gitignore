@@ -6,3 +6,4 @@ mixlyBuild/
 *.hex
 Thumbs.db
 .DS_Store
+/C# Version/.vs/Robotel.LineFollower/FileContentIndex

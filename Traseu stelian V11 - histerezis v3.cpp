@@ -5,6 +5,7 @@
 // pragStabilMs: stay on 11 to clear linieInstabila.
 // pragOscilareMs: max time between 10 and 01 flip to mark unstable line.
 // pragCurba: time in turn before esteCurba (hard corner).
+#include "Utils/Constants.h"
 
 volatile int ServiceMode;
 volatile byte CodMotor;
@@ -46,6 +47,7 @@ volatile long tStart00;
 volatile long tStartLateral;
 volatile long tStartStabil11;
 
+
 void setup() {
   ServiceMode = 0;
   CodMotor = 254;
@@ -86,8 +88,8 @@ void setup() {
   tStart00 = 0;
   tStartLateral = 0;
   tStartStabil11 = 0;
-
-  pinMode(9, INPUT);
+  
+  pinMode(Constants::PinSenzorStanga, INPUT);
   pinMode(3, INPUT);
   pinMode(5, OUTPUT);
   pinMode(6, OUTPUT);
