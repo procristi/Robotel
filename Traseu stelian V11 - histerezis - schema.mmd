@@ -1,0 +1,56 @@
+flowchart TD
+  N1([1 START: init, motoare 0]) --> N2[2 Citeste senzori 9/3 + LED 5/6]
+  N2 --> N3{3 pornit == 0?}
+
+  N3 -->|Da| N4{4 Prima citire pin 7?}
+  N4 -->|Da| N5[5 butonPrev = buton]
+  N4 -->|Nu| N6{6 Front: liber apoi apasat?}
+  N6 -->|Da| N7[7 tStartButon, butonFaza = 1]
+  N6 -->|Nu| N8[8 butonPrev = buton]
+  N7 --> N8
+  N5 --> N9{9 butonFaza == 1 si 2 s?}
+  N8 --> N9
+  N9 -->|Da| N10[10 pornit = 1]
+  N9 -->|Nu| N2
+  N10 --> N2
+
+  N3 -->|Nu| N11{11 Care senzori?}
+
+  N11 -->|11 amandoi pe linie| N12[12 DREPT: stare=0, uita virajul]
+  N11 -->|10 doar stanga| N13{13 ignoraSenzor == 1?}
+  N11 -->|01 doar dreapta| N20{20 ignoraSenzor == 2?}
+  N11 -->|00 amandoi albi| N27{27 exista ultimaDirectie?}
+
+  N13 -->|Da| N14[14 Forteaza DREPT]
+  N13 -->|Nu| N15{15 venim din viraj DREAPTA?}
+  N15 -->|Da| N16[16 Anuleaza viraj, lockout stanga]
+  N15 -->|Nu| N17{17 eram DREPT?}
+  N17 -->|Da| N18[18 Tine minte STANGA, ramane DREPT]
+  N17 -->|Nu| N19[19 Continua viraj STANGA<br/>peste 70 ms: curba tare]
+
+  N20 -->|Da| N21[21 Forteaza DREPT]
+  N20 -->|Nu| N22{22 venim din viraj STANGA?}
+  N22 -->|Da| N23[23 Anuleaza viraj, lockout dreapta]
+  N22 -->|Nu| N24{24 eram DREPT?}
+  N24 -->|Da| N25[25 Tine minte DREAPTA, ramane DREPT]
+  N24 -->|Nu| N26[26 Continua viraj DREAPTA<br/>peste 70 ms: curba tare]
+
+  N27 -->|Da| N28[28 Intra sau tine virajul<br/>peste 70 ms: curba tare]
+  N27 -->|Nu| N29[29 DREPT, fara memorie]
+
+  N12 --> N30[30 Calculeaza viteze roti]
+  N14 --> N30
+  N16 --> N30
+  N18 --> N30
+  N19 --> N30
+  N21 --> N30
+  N23 --> N30
+  N25 --> N30
+  N26 --> N30
+  N28 --> N30
+  N29 --> N30
+
+  N30 --> N31{31 stare sau curba s-au schimbat?}
+  N31 -->|Da| N32[32 Trimite Serial motoare]
+  N31 -->|Nu| N2
+  N32 --> N2
