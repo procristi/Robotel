@@ -1,0 +1,147 @@
+
+
+Traseu stelian V2(1).mix
+Code
+modifica programul asta astfel 
+
+1.
+
+senzor stanga detecteaza linia- sa inceapa virarea la stanga
+
+senzor dreapta detecteaza linia- sa inceapa virarea la dreapta
+
+asa e si acum
+
+ce vreau in plus
+la tracere din 01 sau 10 in 00 (linie nedetectata ) sa continue virajul in directia anterioara pana cand senzorul opus detecteza linia. in acest moment sa se reseteze "memoria" si sa inceapa de la pasul 1
+
+are logica?
+
+
+Worked for 2m 37s
+Da, are logică și exact asta am modificat în program.
+
+Am făcut ca stare să fie și „memoria” virajului, fără să mai introduc o variabilă suplimentară:
+
+10 → virează stânga (stare = -1)
+01 → virează dreapta (stare = 1)
+00 → nu mai modifică stare. Deci continuă virajul anterior.
+când apare senzorul opus, programul intră din nou în regula normală și schimbă direcția conform senzorului detectat.
+De exemplu:
+
+10 → 00 → 00 → 00 → 01
+
+devine:
+
+stânga → stânga → stânga → stânga → dreapta
+
+Iar invers:
+
+01 → 00 → 00 → 10
+
+devine:
+
+dreapta → dreapta → dreapta → stânga
+
+Asta rezolvă exact problema semnalului foarte scurt: robotul nu abandonează virajul doar pentru că, pentru câteva momente, ambii senzori văd 00.
+
+Descarcă programul modificat – Traseu stelian V3 memorie viraj.mix
+
+Un singur aspect rămâne de analizat separat: cazul 11 (ambii senzori detectează linia). În programul actual l-am lăsat cu comportamentul pe care îl aveai deja.
+
+
+Traseu stelian V3 - memorie viraj.mix
+Code
+am facut unele ajustari. pe varianta asta vreau sa am si INAINTE cand ambii senzori vad linia. i-am pus aproape centru acum
+
+Worked for 1m 1s
+Am modificat varianta ta actuală exact cum ai cerut.
+
+Logica este acum:
+
+Senzor stânga	Senzor dreapta	Acțiune
+1	0	virează stânga
+0	1	virează dreapta
+0	0	continuă virajul memorat anterior
+1	1	ÎNAINTE și stare = 0
+Asta are mai mult sens acum că ai apropiat senzorii spre centru: când ambii prind simultan linia, robotul consideră că este bine centrat și merge înainte.
+
+Am păstrat ajustările tale de viteze și restul programului neschimbate.
+
+Descarcă varianta V4 – 11 = ÎNAINTE
+
+User attachment
+merge bine daca pun setarile astea merge binisor (nu prea o ia dretp totusi ) dar daca maresc viteza, "pierde" linia, nu are timp sa reactioneze. Oare pot face diferenta intre deviatie de la axul liniei si "curba" ca sa pot seta roata care "sta" de fapt sa se invarta cu o viteza minima (vitezaMica) cand e pe traseu drept si 0 cand trebe luata curba 90 grade
+Da. Cu doi senzori digitali nu poți ști instantaneu dacă 10 înseamnă o mică abatere sau începutul unei curbe de 90°, pentru că în prima clipă situațiile arată identic. Dar le poți diferenția foarte bine după cât timp persistă aceeași stare.
+
+Aș păstra exact logica ta actuală și aș adăuga un „cronometru de viraj”:
+
+11 → e centrat pe linie → ÎNAINTE, ambele roți merg normal, se resetează cronometrul.
+apare 10 → începe stânga, dar la început presupunem că e doar corecție: roata interioară merge cu vitezaMica = 40, cealaltă cu vitezaMare = 80.
+dacă 10 dispare repede și revii la 11 → a fost doar deviație, deci foarte bine că nu ai oprit roata.
+dacă 10 persistă, de exemplu 70–120 ms, atunci îl considerăm curbă adevărată și trecem roata interioară de la 40 la 0.
+la 00, conform logicii pe care am făcut-o înainte, continuă direcția memorată. Dacă deja s-a decis că este curbă, continuă cu roata interioară 0.
+când senzorul opus găsește linia, se termină curba, se resetează memoria și revenim la logica normală.
+Practic ar fi:
+
+Situație	Roata interioară	Roata exterioară
+mers drept 11	normal	normal
+corecție scurtă 10 / 01	vitezaMica = 40	vitezaMare = 80
+aceeași stare persistă > ~80 ms	0	vitezaMare = 80
+00 după o corecție scurtă	continuă cu 40	80
+00 după ce s-a declarat curbă	continuă cu 0	80
+Asta este important pentru problema ta la viteză mai mare: acum, dacă oprești imediat o roată la orice 10/01, robotul face o corecție prea brutală și începe să oscileze. Dacă folosești 40/80 pentru deviațiile mici, reacția este mult mai lină. Doar dacă abaterea persistă treci la 0/80, suficient de agresiv pentru curba de 90°.
+
+Eu nu aș folosi un simplu număr de cicluri, ci timpul în milisecunde, pentru că durata unui ciclu Mixly poate varia. Ai nevoie de încă aproximativ trei variabile:
+
+tStartViraj
+directieMemorata
+esteCurba
+Conceptual, pentru stânga:
+
+dacă Stanga=1 și Dreapta=0:
+    dacă tocmai am început virajul:
+        memorează timpul actual
+
+    dacă timpul trecut < 80 ms:
+        stânga = vitezaMica
+        dreapta = vitezaMare
+    altfel:
+        esteCurba = 1
+        stânga = 0
+        dreapta = vitezaMare
+Și simetric pentru dreapta.
+
+Aș începe cu pragul la aproximativ 80 ms. Dacă la viteză mai mare intră prea târziu în curba de 90°, îl reducem la 50–60 ms. Dacă tratează deviațiile normale drept curbe, îl creștem spre 100–130 ms.
+
+Mai este o îmbunătățire foarte bună în cazul tău: pentru 00, putem ține cont dacă esteCurba=0 sau 1. Astfel robotul știe dacă a pierdut linia în timpul unei simple corecții sau în timpul unei curbe serioase.
+
+Dacă vrei, pe V4-ul nostru actual pot să introduc exact această logică în Mixly, cu vitezaMica pentru corecție și 0 doar pentru curba detectată.
+
+
+Traseu stelian V3 - memorie viraj(1).mix
+Code
+ok, mdifica varianta asta ca sa includa ce ai descris mai sus
+
+Worked for 6m 39s
+Am modificat varianta încărcată și am introdus logica de diferențiere între corecție mică și curbă adevărată.
+
+Logica este acum:
+
+11 → ÎNAINTE, se resetează memoria virajului.
+10 → începe corecția la stânga.
+01 → începe corecția la dreapta.
+în primele 80 ms, roata interioară merge cu vitezaMica = 40.
+dacă virajul durează peste 80 ms, esteCurba = 1 și roata interioară ajunge la 0.
+la 00 continuă direcția memorată și cronometrul continuă să curgă; deci poate trece automat de la corecție ușoară la viraj puternic.
+când apare senzorul opus, începe o nouă corecție și se resetează cronometrul/esteCurba.
+am păstrat compensările tale pentru motor, inclusiv +15 pe corecția stânga și reglajele existente pentru mersul înainte.
+Am adăugat și variabila pragCurba = 80, ca să poți regla ușor momentul în care robotul decide că nu mai este simplă deviație, ci curbă de 90°.
+
+Descarcă Traseu stelian V5 – curbă inteligentă 80 ms
+
+Aș testa prima dată exact cu vitezaMare = 80, vitezaMica = 40, pragCurba = 80. După ce vedem cum se comportă, putem crește vitezaMare și regla pragCurba în funcție de viteză.
+
+
+
+
