@@ -5,7 +5,9 @@ using Robotel.Utils;
 namespace Robotel.LineFollower.Sketch;
 
 /// <summary>
-/// Authoring copy of Traseu stelian V11 - histerezis v3.cpp — translate blocks to Mixly; do not run on PC.
+/// Each loop reads the sensors, starts a timer when the sensor pattern changes,
+/// chooses the current turn from that pattern and from the remembered turn,
+/// then sends wheel speeds.
 /// </summary>
 public static class V11HisterezisV3Sketch
 {
@@ -22,27 +24,28 @@ public static class V11HisterezisV3Sketch
     public static int pragOscilareMs;
     public static int pragStabilMs;
     public static int pragLateralMs;
-    public static Viraj stareViraj;
-    public static Viraj ultimulViraj;
-    public static bool esteCurba;
-    public static long tStartViraj;
-    public static IgnoraSenzor ignoraSenzor;
-    public static Viraj stareMotor;
+    public static Viraj virajCurent;
+    // Side of the line stored while both wheels still run straight. Used when both sensors leave the line.
+    public static ParteLinie parteMemorata;
+    public static bool esteCurbaTare;
+    public static long momentInceputViraj;
+    public static IgnoraSenzor senzorDeIgnorat;
+    // Last turn command sent to the motors.
+    public static Viraj virajTrimis;
     public static bool? curbaTrimisa;
-    public static int motorStanga;
-    public static int motorDreapta;
+
     public static int stareButonCurenta;
     public static int robotPornit;
     public static int durataPornire;
     public static long tStartButon;
     public static int stareButonAnterior;
     public static CombinatieSenzori combinatieSenzoriAnterioara;
-    public static int linieInstabila;
+    // public static int linieInstabila;
     //  public static int ultimLateral;
     //  public static long tUltimLateral;
-    public static long tStart00;
-    public static long tStartLateral;
-    public static long timpStartStabil;
+    public static long momentInceputDeraiere;
+    public static long momentInceputLateral;
+    public static long momentInceputStabil;
 
     public static void setup()
     {
@@ -59,27 +62,26 @@ public static class V11HisterezisV3Sketch
         pragOscilareMs = 120;
         pragStabilMs = 80;
         pragLateralMs = 0;
-        stareViraj = Viraj.Drept;
-        ultimulViraj = Viraj.Drept;
-        esteCurba = false;
-        tStartViraj = 0;
-        ignoraSenzor = IgnoraSenzor.Niciunul;
-        stareMotor = Viraj.Dreapta;
+        virajCurent = Viraj.Inainte;
+        parteMemorata = ParteLinie.Niciuna;
+        esteCurbaTare = false;
+        momentInceputViraj = 0;
+        senzorDeIgnorat = IgnoraSenzor.Niciunul;
+        virajTrimis = Viraj.Dreapta;
         curbaTrimisa = null;
-        motorStanga = 0;
-        motorDreapta = 0;
+
         stareButonCurenta = 0;
         robotPornit = 0;
         durataPornire = 2000;
         tStartButon = 0;
         stareButonAnterior = 0;
         combinatieSenzoriAnterioara = CombinatieSenzori.Necunoscut;
-        linieInstabila = 0;
+        //linieInstabila = 0;
         // ultimLateral = 0;
         // tUltimLateral = 0;
-        tStart00 = 0;
-        tStartLateral = 0;
-        timpStartStabil = 0;
+        momentInceputDeraiere = 0;
+        momentInceputLateral = 0;
+        momentInceputStabil = 0;
 
         Pin.SetPinMode(Pins.SenzorStanga, PinMode.Input);
         Pin.SetPinMode(Pins.SenzorDreapta, PinMode.Input);
@@ -93,282 +95,332 @@ public static class V11HisterezisV3Sketch
 
         while (true)
         {
-            senzorStanga = Pin.Citeste(Pins.SenzorStanga);
-            senzorDreapta = Pin.Citeste(Pins.SenzorDreapta);
-            stareButonCurenta = Pin.Citeste(Pins.Buton);
-
-            Pin.DigitalWrite(Pins.BecDreapta, senzorDreapta == 1 ? PinState.High : PinState.Low);
-            Pin.DigitalWrite(Pins.BecStanga, senzorStanga == 1 ? PinState.High : PinState.Low);
-
-
-            if (robotPornit == 0)
-            {
-                if (stareButonAnterior == 0 && stareButonCurenta == 1)
-                {
-                    tStartButon = millis();
-                }
-
-                stareButonAnterior = stareButonCurenta;
-
-                if (tStartButon != 0 && (millis() - tStartButon) >= durataPornire)
-                {
-                    robotPornit = 1;
-                }
-            }
+            CitesteenSenzorii();
             if (robotPornit == 1)
             {
                 CombinatieSenzori combinatieSenzoriAcum = CitesteCombinatieSenzori();
-                StartCronometre(combinatieSenzoriAcum);
-
-                if (combinatieSenzoriAcum == CombinatieSenzori.AmbeleLinii)
-                {
-                    //if (antiOscilareActiv == 1 && (millis() - timpStartStabil) >= pragStabilMs)
-                    //{
-                    //    linieInstabila = 0;
-                    //}
-
-                    //  ultimLateral = 0;
-                    stareViraj = Viraj.Drept;
-                    ultimulViraj = Viraj.Drept;
-                    esteCurba = false;
-                    ignoraSenzor = 0;
-                }
-                if (combinatieSenzoriAcum == CombinatieSenzori.LiniaStanga)
-                {
-
-                    //if (antiOscilareActiv == 1)
-                    //{
-                    //    if (ultimLateral == 2 && (millis() - tUltimLateral) <= pragOscilareMs)
-                    //    {
-                    //        linieInstabila = 1;
-                    //    }
-
-                    //    ultimLateral = 1;
-                    //    tUltimLateral = millis();
-                    //}
-
-                    if (ignoraSenzor == IgnoraSenzor.IgnoraStanga)
-                    {
-                        stareViraj = Viraj.Drept;
-                    }
-                    else if (stareViraj != Viraj.Drept && ultimulViraj == Viraj.Dreapta)
-                    {
-                        stareViraj = Viraj.Drept;
-                        ultimulViraj = Viraj.Drept;
-                        esteCurba = false;
-                        ignoraSenzor = IgnoraSenzor.IgnoraStanga;
-                    }
-                    else if (stareViraj == Viraj.Drept)
-                    {
-                        if (linieInstabila == 0 && CitesteCronometru(CombinatieSenzori.LiniaDreapta) >= pragLateralMs)
-                        {
-                            ultimulViraj = Viraj.Stanga;
-                        }
-
-                        stareViraj = Viraj.Drept;
-                    }
-                    else
-                    {
-                        if (ultimulViraj != Viraj.Stanga)
-                        {
-                            tStartViraj = millis();
-                            esteCurba = false;
-                        }
-
-                        ultimulViraj = Viraj.Stanga;
-                        esteCurba = CitesteCronometruStartViraj() >= pragCurba ? true : esteCurba;
-                        
-                        stareViraj = Viraj.Stanga;
-                    }
-                }
-                if (combinatieSenzoriAcum == CombinatieSenzori.LiniaDreapta)
-                {
-
-                    //if (antiOscilareActiv == 1)
-                    //{
-                    //    if (ultimLateral == 1 && (millis() - tUltimLateral) <= pragOscilareMs)
-                    //    {
-                    //        linieInstabila = 1;
-                    //    }
-
-                    //    ultimLateral = 2;
-                    //    tUltimLateral = millis();
-                    //}
-
-                    if (ignoraSenzor == IgnoraSenzor.IgnoraDreapta)
-                    {
-                        stareViraj = Viraj.Drept;
-                    }
-                    else if (stareViraj != Viraj.Drept && ultimulViraj == Viraj.Stanga)
-                    {
-                        stareViraj = Viraj.Drept;
-                        ultimulViraj = Viraj.Drept;
-                        esteCurba = false;
-                        ignoraSenzor = IgnoraSenzor.IgnoraDreapta;
-                    }
-                    else if (stareViraj == Viraj.Drept)
-                    {
-                        if (linieInstabila == 0 && CitesteCronometru(CombinatieSenzori.LiniaDreapta) >= pragLateralMs)
-                        {
-                            ultimulViraj = Viraj.Dreapta;
-                        }
-
-                        stareViraj = Viraj.Drept;
-                    }
-                    else
-                    {
-                        if (ultimulViraj != Viraj.Dreapta)
-                        {
-                            tStartViraj = millis();
-                            esteCurba = false;
-                        }
-
-                        ultimulViraj = Viraj.Dreapta;
-                        esteCurba = CitesteCronometruStartViraj() >= pragCurba ? true : esteCurba;
-
-                        stareViraj = Viraj.Dreapta;
-                    }
-                }
-                if (combinatieSenzoriAcum == CombinatieSenzori.NicioLinie)
-                {
-
-                    ignoraSenzor = 0;
-
-                    if (linieInstabila == 1)
-                    {
-                        stareViraj = Viraj.Drept;
-                    }
-                    else if (ultimulViraj != Viraj.Drept)
-                    {
-                        if (stareViraj != Viraj.Drept)
-                        {
-                            if (CitesteCronometruStartViraj() >= pragCurba)
-                            {
-                                esteCurba = true;
-                            }
-
-                            stareViraj = ultimulViraj;
-                        }
-                        else if ((millis() - tStart00) >= prag00Ms)
-                        {
-                            if (stareViraj == 0)
-                            {
-                                tStartViraj = millis();
-                                esteCurba = false;
-                            }
-
-                            if (CitesteCronometruStartViraj() >= pragCurba)
-                            {
-                                esteCurba = true;
-                            }
-
-                            stareViraj = ultimulViraj;
-                        }
-                        else
-                        {
-                            stareViraj = 0;
-                        }
-                    }
-                    else
-                    {
-                        stareViraj = 0;
-                    }
-                }
-
+                PornesteCronometre(combinatieSenzoriAcum);
+                ActualizeazaViraj(combinatieSenzoriAcum);
+                AplicaMotoare();
                 combinatieSenzoriAnterioara = combinatieSenzoriAcum;
+            }
+        }
+    }
 
-                if (linieInstabila == 1 && stareViraj != 0)
+    private static void CitesteenSenzorii()
+    {
+        senzorStanga = Pin.Citeste(Pins.SenzorStanga);
+        senzorDreapta = Pin.Citeste(Pins.SenzorDreapta);
+        stareButonCurenta = Pin.Citeste(Pins.Buton);
+
+        Pin.DigitalWrite(Pins.BecDreapta, senzorDreapta == 1 ? PinState.High : PinState.Low);
+        Pin.DigitalWrite(Pins.BecStanga, senzorStanga == 1 ? PinState.High : PinState.Low);
+
+        if (robotPornit == 0)
+        {
+            if (stareButonAnterior == 0 && stareButonCurenta == 1)
+            {
+                tStartButon = millis();
+            }
+
+            stareButonAnterior = stareButonCurenta;
+
+            if (tStartButon != 0 && (millis() - tStartButon) >= durataPornire)
+            {
+                robotPornit = 1;
+            }
+        }
+    }
+
+    private static void ActualizeazaViraj(CombinatieSenzori combinatieSenzoriAcum)
+    {
+        if (combinatieSenzoriAcum == CombinatieSenzori.AmbeleLinii)
+        {
+            Caz11();
+        }
+        if (combinatieSenzoriAcum == CombinatieSenzori.LiniaStanga)
+        {
+            Caz10();
+        }
+        if (combinatieSenzoriAcum == CombinatieSenzori.LiniaDreapta)
+        {
+            Caz01();
+        }
+        if (combinatieSenzoriAcum == CombinatieSenzori.NicioLinie)
+        {
+            Caz00();
+        }
+
+        if (/*linieInstabila == 1 &&*/ virajCurent != Viraj.Inainte)
+        {
+            virajCurent = Viraj.Inainte;
+            esteCurbaTare = false;
+        }
+    }
+
+    private static void Caz11()
+    {
+        //if (antiOscilareActiv == 1 && (millis() - momentInceputStabil) >= pragStabilMs)
+        //{
+        //    linieInstabila = 0;
+        //}
+
+        //  ultimLateral = 0;
+        virajCurent = Viraj.Inainte;
+        parteMemorata = ParteLinie.Niciuna;
+        esteCurbaTare = false;
+        senzorDeIgnorat = IgnoraSenzor.Niciunul;
+    }
+
+    private static void Caz10()
+    {
+        //if (antiOscilareActiv == 1)
+        //{
+        //    if (ultimLateral == 2 && (millis() - tUltimLateral) <= pragOscilareMs)
+        //    {
+        //        linieInstabila = 1;
+        //    }
+
+        //    ultimLateral = 1;
+        //    tUltimLateral = millis();
+        //}
+
+        if (senzorDeIgnorat == IgnoraSenzor.IgnoraStanga)
+        {
+            virajCurent = Viraj.Inainte;
+            return;
+        }
+
+        if (parteMemorata == ParteLinie.Dreapta && (virajCurent == Viraj.Stanga || virajCurent == Viraj.Inainte || virajCurent == Viraj.Necunoscut))
+        {
+            virajCurent = Viraj.Inainte;
+            parteMemorata = ParteLinie.Niciuna;
+            esteCurbaTare = false;
+            senzorDeIgnorat = IgnoraSenzor.IgnoraStanga;
+            return;
+        }
+
+        if (virajCurent == Viraj.Inainte)
+        {
+            if (/*linieInstabila == 0 &&*/ CitesteCronometru(CombinatieSenzori.LiniaDreapta) >= pragLateralMs)
+            {
+                parteMemorata = ParteLinie.Stanga;
+            }
+
+            virajCurent = Viraj.Inainte;
+            return;
+        }
+
+        if (parteMemorata != ParteLinie.Stanga)
+        {
+            momentInceputViraj = millis();
+            esteCurbaTare = false;
+        }
+
+        parteMemorata = ParteLinie.Stanga;
+        esteCurbaTare = CitesteCronometruStartViraj() >= pragCurba ? true : esteCurbaTare;
+
+        virajCurent = Viraj.Stanga;
+
+    }
+
+    private static void Caz01()
+    {
+        //if (antiOscilareActiv == 1)
+        //{
+        //    if (ultimLateral == 1 && (millis() - tUltimLateral) <= pragOscilareMs)
+        //    {
+        //        linieInstabila = 1;
+        //    }
+
+        //    ultimLateral = 2;
+        //    tUltimLateral = millis();
+        //}
+
+        if (senzorDeIgnorat == IgnoraSenzor.IgnoraDreapta)
+        {
+            virajCurent = Viraj.Inainte;
+        }
+        else if (virajCurent != Viraj.Inainte && parteMemorata == ParteLinie.Stanga)
+        {
+            virajCurent = Viraj.Inainte;
+            parteMemorata = ParteLinie.Niciuna;
+            esteCurbaTare = false;
+            senzorDeIgnorat = IgnoraSenzor.IgnoraDreapta;
+        }
+        else if (virajCurent == Viraj.Inainte)
+        {
+            if (/*linieInstabila == 0 &&*/ CitesteCronometru(CombinatieSenzori.LiniaDreapta) >= pragLateralMs)
+            {
+                parteMemorata = ParteLinie.Dreapta;
+            }
+
+            virajCurent = Viraj.Inainte;
+        }
+        else
+        {
+            if (parteMemorata != ParteLinie.Dreapta)
+            {
+                momentInceputViraj = millis();
+                esteCurbaTare = false;
+            }
+
+            parteMemorata = ParteLinie.Dreapta;
+            esteCurbaTare = CitesteCronometruStartViraj() >= pragCurba ? true : esteCurbaTare;
+
+            virajCurent = Viraj.Dreapta;
+        }
+    }
+
+    private static void Caz00()
+    {
+        senzorDeIgnorat = IgnoraSenzor.Niciunul;
+        /*
+        if (linieInstabila == 1)
+        {
+            virajCurent = Viraj.Drept;
+        }
+        else 
+            */
+        if (parteMemorata != ParteLinie.Niciuna)
+        {
+            if (virajCurent != Viraj.Inainte)
+            {
+                if (CitesteCronometruStartViraj() >= pragCurba)
                 {
-                    stareViraj = 0;
-                    esteCurba = false;
+                    esteCurbaTare = true;
                 }
 
-                if (stareViraj == 0)
+                virajCurent = VirajDinParteMemorata();
+            }
+            else if ((millis() - momentInceputDeraiere) >= prag00Ms)
+            {
+                if (virajCurent == Viraj.Inainte)
                 {
-                    motorStanga = vitezaMare + compensareDrept;
+                    momentInceputViraj = millis();
+                    esteCurbaTare = false;
+                }
+
+                if (CitesteCronometruStartViraj() >= pragCurba)
+                {
+                    esteCurbaTare = true;
+                }
+
+                virajCurent = VirajDinParteMemorata();
+            }
+            else
+            {
+                virajCurent = Viraj.Inainte;
+            }
+        }
+        else
+        {
+            virajCurent = Viraj.Inainte;
+        }
+    }
+
+    private static void AplicaMotoare()
+    {
+        int motorStanga = 0;
+        int motorDreapta = 0;
+        switch (virajCurent)
+        {
+            case Viraj.Inainte:
+                motorStanga = vitezaMare + compensareDrept;
+                motorDreapta = vitezaMare;
+                break;
+            case Viraj.Stanga:
+                if (esteCurbaTare == true)
+                {
+                    motorStanga = 0;
                     motorDreapta = vitezaMare;
-                }
-                else if (stareViraj == Viraj.Stanga)
-                {
-                    if (esteCurba == true)
-                    {
-                        motorStanga = 0;
-                        motorDreapta = vitezaMare;
-                    }
-                    else
-                    {
-                        motorStanga = vitezaMica + compensareVitMica;
-                        motorDreapta = vitezaMare;
-                    }
                 }
                 else
                 {
-                    if (esteCurba == true)
-                    {
-                        motorStanga = vitezaMare + compensareVitMare;
-                        motorDreapta = 0;
-                    }
-                    else
-                    {
-                        motorStanga = vitezaMare + compensareVitMare;
-                        motorDreapta = vitezaMica;
-                    }
+                    motorStanga = vitezaMica + compensareVitMica;
+                    motorDreapta = vitezaMare;
                 }
-
-                if (stareViraj != stareMotor || esteCurba != curbaTrimisa)
+                break;
+            case Viraj.Dreapta:
+                if (esteCurbaTare == true)
                 {
-                    stareMotor = stareViraj;
-                    curbaTrimisa = esteCurba;
-                    Engine.SetSpeed(motorStanga, motorDreapta);
-
+                    motorStanga = vitezaMare + compensareVitMare;
+                    motorDreapta = 0;
                 }
-            }
+                else
+                {
+                    motorStanga = vitezaMare + compensareVitMare;
+                    motorDreapta = vitezaMica;
+                }
+                break;
+        }
+
+
+        if (virajCurent != virajTrimis || esteCurbaTare != curbaTrimisa)
+        {
+            virajTrimis = virajCurent;
+            curbaTrimisa = esteCurbaTare;
+            Engine.SetSpeed(motorStanga, motorDreapta);
         }
     }
 
     private static long CitesteCronometruStartViraj()
     {
-        return millis() - tStartViraj;
+        return millis() - momentInceputViraj;
     }
-    private static void StartCronometre(CombinatieSenzori stareaCurenta)
-    {
 
-        if (stareaCurenta == CombinatieSenzori.AmbeleLinii && combinatieSenzoriAnterioara != stareaCurenta)
+    private static Viraj VirajDinParteMemorata()
+    {
+        if (parteMemorata == ParteLinie.Stanga)
         {
-            timpStartStabil = millis();
+            return Viraj.Stanga;
         }
 
+        if (parteMemorata == ParteLinie.Dreapta)
+        {
+            return Viraj.Dreapta;
+        }
+
+        return Viraj.Inainte;
+    }
+
+    private static void PornesteCronometre(CombinatieSenzori stareaCurenta)
+    {
+        if (stareaCurenta == CombinatieSenzori.AmbeleLinii && combinatieSenzoriAnterioara != stareaCurenta)
+        {
+            momentInceputStabil = millis();
+        }
 
         if (stareaCurenta == CombinatieSenzori.LiniaStanga && combinatieSenzoriAnterioara != stareaCurenta)
         {
-            tStartLateral = millis();
+            momentInceputLateral = millis();
         }
 
         if (stareaCurenta == CombinatieSenzori.LiniaDreapta && combinatieSenzoriAnterioara != stareaCurenta)
         {
-            tStartLateral = millis();
+            momentInceputLateral = millis();
         }
 
         if (stareaCurenta == CombinatieSenzori.NicioLinie && combinatieSenzoriAnterioara != stareaCurenta)
         {
-            tStart00 = millis();
+            momentInceputDeraiere = millis();
         }
-
     }
+
     public static long CitesteCronometru(CombinatieSenzori pentruStarea)
     {
         long timpCurent = 0;
         if (pentruStarea == CombinatieSenzori.AmbeleLinii)
         {
-            timpCurent = millis() - timpStartStabil;
+            timpCurent = millis() - momentInceputStabil;
         }
         if (pentruStarea == CombinatieSenzori.LiniaStanga || pentruStarea == CombinatieSenzori.LiniaDreapta)
         {
-            timpCurent = millis() - tStartLateral;
+            timpCurent = millis() - momentInceputLateral;
         }
         if (pentruStarea == CombinatieSenzori.NicioLinie)
         {
-            timpCurent = millis() - tStart00;
+            timpCurent = millis() - momentInceputDeraiere;
         }
         return timpCurent;
     }

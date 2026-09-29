@@ -36,7 +36,7 @@ namespace Robotel.LineFollower.Helpers
     public enum Viraj
     {
         Necunoscut = 99,
-        Drept = 0,
+        Inainte = 0,
         Stanga = -1,
         Dreapta = 1
     }
@@ -46,5 +46,13 @@ namespace Robotel.LineFollower.Helpers
         Niciunul = 0,
         IgnoraStanga = 1,
         IgnoraDreapta = 2
+    }
+
+    // Side of the line stored while both wheels still run straight.
+    public enum ParteLinie
+    {
+        Niciuna = 0,
+        Stanga = 1,
+        Dreapta = 2
     }
 }
