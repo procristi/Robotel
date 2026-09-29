@@ -30,9 +30,9 @@ public static class V11HisterezisV3Sketch
     public static bool esteCurbaTare;
     public static long momentInceputViraj;
     public static IgnoraSenzor senzorDeIgnorat;
-    // Last turn command sent to the motors.
-    public static Viraj virajTrimis;
-    public static bool? curbaTrimisa;
+    // Last wheel speeds written to the motors.
+    public static int vitezaTrimisaStanga;
+    public static int vitezaTrimisaDreapta;
 
     public static int stareButonCurenta;
     public static int robotPornit;
@@ -67,8 +67,8 @@ public static class V11HisterezisV3Sketch
         esteCurbaTare = false;
         momentInceputViraj = 0;
         senzorDeIgnorat = IgnoraSenzor.Niciunul;
-        virajTrimis = Viraj.Dreapta;
-        curbaTrimisa = null;
+        vitezaTrimisaStanga = 0;
+        vitezaTrimisaDreapta = 0;
 
         stareButonCurenta = 0;
         robotPornit = 0;
@@ -151,11 +151,11 @@ public static class V11HisterezisV3Sketch
             Caz00();
         }
 
-        if (/*linieInstabila == 1 &&*/ virajCurent != Viraj.Inainte)
-        {
-            virajCurent = Viraj.Inainte;
-            esteCurbaTare = false;
-        }
+        //if (/*linieInstabila == 1 &&*/ virajCurent != Viraj.Inainte)
+        //{
+        //    virajCurent = Viraj.Inainte;
+        //    esteCurbaTare = false;
+        //}
     }
 
     private static void Caz11()
@@ -174,6 +174,7 @@ public static class V11HisterezisV3Sketch
 
     private static void Caz10()
     {
+        var virajAnterior = virajCurent;
         //if (antiOscilareActiv == 1)
         //{
         //    if (ultimLateral == 2 && (millis() - tUltimLateral) <= pragOscilareMs)
@@ -191,16 +192,7 @@ public static class V11HisterezisV3Sketch
             return;
         }
 
-        if (parteMemorata == ParteLinie.Dreapta && (virajCurent == Viraj.Stanga || virajCurent == Viraj.Inainte || virajCurent == Viraj.Necunoscut))
-        {
-            virajCurent = Viraj.Inainte;
-            parteMemorata = ParteLinie.Niciuna;
-            esteCurbaTare = false;
-            senzorDeIgnorat = IgnoraSenzor.IgnoraStanga;
-            return;
-        }
-
-        if (virajCurent == Viraj.Inainte)
+        if (virajAnterior == Viraj.Inainte)
         {
             if (/*linieInstabila == 0 &&*/ CitesteCronometru(CombinatieSenzori.LiniaDreapta) >= pragLateralMs)
             {
@@ -210,6 +202,17 @@ public static class V11HisterezisV3Sketch
             virajCurent = Viraj.Inainte;
             return;
         }
+
+        if (virajAnterior != Viraj.Inainte && parteMemorata == ParteLinie.Dreapta)
+        {
+            virajCurent = Viraj.Inainte;
+            parteMemorata = ParteLinie.Niciuna;
+            esteCurbaTare = false;
+            senzorDeIgnorat = IgnoraSenzor.IgnoraStanga;
+            return;
+        }
+
+
 
         if (parteMemorata != ParteLinie.Stanga)
         {
@@ -226,6 +229,7 @@ public static class V11HisterezisV3Sketch
 
     private static void Caz01()
     {
+        var virajAnterior = virajCurent;
         //if (antiOscilareActiv == 1)
         //{
         //    if (ultimLateral == 1 && (millis() - tUltimLateral) <= pragOscilareMs)
@@ -240,15 +244,9 @@ public static class V11HisterezisV3Sketch
         if (senzorDeIgnorat == IgnoraSenzor.IgnoraDreapta)
         {
             virajCurent = Viraj.Inainte;
+            return;
         }
-        else if (virajCurent != Viraj.Inainte && parteMemorata == ParteLinie.Stanga)
-        {
-            virajCurent = Viraj.Inainte;
-            parteMemorata = ParteLinie.Niciuna;
-            esteCurbaTare = false;
-            senzorDeIgnorat = IgnoraSenzor.IgnoraDreapta;
-        }
-        else if (virajCurent == Viraj.Inainte)
+        if (virajAnterior == Viraj.Inainte)
         {
             if (/*linieInstabila == 0 &&*/ CitesteCronometru(CombinatieSenzori.LiniaDreapta) >= pragLateralMs)
             {
@@ -256,24 +254,34 @@ public static class V11HisterezisV3Sketch
             }
 
             virajCurent = Viraj.Inainte;
+            return;
         }
-        else
+
+        if (virajAnterior != Viraj.Inainte && parteMemorata == ParteLinie.Stanga)
         {
-            if (parteMemorata != ParteLinie.Dreapta)
-            {
-                momentInceputViraj = millis();
-                esteCurbaTare = false;
-            }
-
-            parteMemorata = ParteLinie.Dreapta;
-            esteCurbaTare = CitesteCronometruStartViraj() >= pragCurba ? true : esteCurbaTare;
-
-            virajCurent = Viraj.Dreapta;
+            virajCurent = Viraj.Inainte;
+            parteMemorata = ParteLinie.Niciuna;
+            esteCurbaTare = false;
+            senzorDeIgnorat = IgnoraSenzor.IgnoraDreapta;
+            return;
         }
+
+        if (parteMemorata != ParteLinie.Dreapta)
+        {
+            momentInceputViraj = millis();
+            esteCurbaTare = false;
+        }
+
+        parteMemorata = ParteLinie.Dreapta;
+        esteCurbaTare = CitesteCronometruStartViraj() >= pragCurba ? true : esteCurbaTare;
+
+        virajCurent = Viraj.Dreapta;
+
     }
 
     private static void Caz00()
     {
+        var virajAnterior = virajCurent;
         senzorDeIgnorat = IgnoraSenzor.Niciunul;
         /*
         if (linieInstabila == 1)
@@ -284,7 +292,7 @@ public static class V11HisterezisV3Sketch
             */
         if (parteMemorata != ParteLinie.Niciuna)
         {
-            if (virajCurent != Viraj.Inainte)
+            if (virajAnterior != Viraj.Inainte)
             {
                 if (CitesteCronometruStartViraj() >= pragCurba)
                 {
@@ -295,7 +303,7 @@ public static class V11HisterezisV3Sketch
             }
             else if ((millis() - momentInceputDeraiere) >= prag00Ms)
             {
-                if (virajCurent == Viraj.Inainte)
+                if (virajAnterior == Viraj.Inainte)
                 {
                     momentInceputViraj = millis();
                     esteCurbaTare = false;
@@ -321,46 +329,46 @@ public static class V11HisterezisV3Sketch
 
     private static void AplicaMotoare()
     {
-        int motorStanga = 0;
-        int motorDreapta = 0;
+        int vitezaMotorStanga = 0;
+        int vitezaMotorDreapta = 0;
         switch (virajCurent)
         {
             case Viraj.Inainte:
-                motorStanga = vitezaMare + compensareDrept;
-                motorDreapta = vitezaMare;
+                vitezaMotorStanga = vitezaMare + compensareDrept;
+                vitezaMotorDreapta = vitezaMare;
                 break;
             case Viraj.Stanga:
                 if (esteCurbaTare == true)
                 {
-                    motorStanga = 0;
-                    motorDreapta = vitezaMare;
+                    vitezaMotorStanga = 0;
+                    vitezaMotorDreapta = vitezaMare;
                 }
                 else
                 {
-                    motorStanga = vitezaMica + compensareVitMica;
-                    motorDreapta = vitezaMare;
+                    vitezaMotorStanga = vitezaMica + compensareVitMica;
+                    vitezaMotorDreapta = vitezaMare;
                 }
                 break;
             case Viraj.Dreapta:
                 if (esteCurbaTare == true)
                 {
-                    motorStanga = vitezaMare + compensareVitMare;
-                    motorDreapta = 0;
+                    vitezaMotorStanga = vitezaMare + compensareVitMare;
+                    vitezaMotorDreapta = 0;
                 }
                 else
                 {
-                    motorStanga = vitezaMare + compensareVitMare;
-                    motorDreapta = vitezaMica;
+                    vitezaMotorStanga = vitezaMare + compensareVitMare;
+                    vitezaMotorDreapta = vitezaMica;
                 }
                 break;
         }
 
 
-        if (virajCurent != virajTrimis || esteCurbaTare != curbaTrimisa)
+        if (vitezaMotorStanga != vitezaTrimisaStanga || vitezaMotorDreapta != vitezaTrimisaDreapta)
         {
-            virajTrimis = virajCurent;
-            curbaTrimisa = esteCurbaTare;
-            Engine.SetSpeed(motorStanga, motorDreapta);
+            vitezaTrimisaStanga = vitezaMotorStanga;
+            vitezaTrimisaDreapta = vitezaMotorDreapta;
+            Engine.SetSpeed(vitezaMotorStanga, vitezaMotorDreapta);
         }
     }
 
