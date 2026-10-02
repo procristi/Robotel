@@ -15,6 +15,8 @@ public static class V11HisterezisV3Sketch
     public static int senzorDreapta;
     public static byte vitezaMica;
     public static byte vitezaMare;
+    // Inner-wheel speed during a hard turn. The outer wheel stays at vitezaMare.
+    public static byte vitezaStationara;
     public static int compensareDrept;
     public static int compensareVitMica;
     public static int compensareVitMare;
@@ -97,6 +99,7 @@ public static class V11HisterezisV3Sketch
         senzorDreapta = 0;
         vitezaMica = 40;
         vitezaMare = 240;
+        vitezaStationara = 0;
         compensareDrept = 0;
         compensareVitMica = 0;
         compensareVitMare = 0;
@@ -386,7 +389,7 @@ public static class V11HisterezisV3Sketch
             case Viraj.Stanga:
                 if (esteCurbaTare == true)
                 {
-                    vitezaMotorStanga = 0;
+                    vitezaMotorStanga = vitezaStationara;
                     vitezaMotorDreapta = vitezaMare;
                 }
                 else
@@ -399,7 +402,7 @@ public static class V11HisterezisV3Sketch
                 if (esteCurbaTare == true)
                 {
                     vitezaMotorStanga = vitezaMare + compensareVitMare;
-                    vitezaMotorDreapta = 0;
+                    vitezaMotorDreapta = vitezaStationara;
                 }
                 else
                 {
