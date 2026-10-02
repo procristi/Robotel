@@ -1,0 +1,127 @@
+<Window x:Class="Robotel.Simulator.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Simulator traseu" Height="900" Width="1280"
+        WindowStartupLocation="CenterScreen">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="380"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" Margin="8">
+            <StackPanel>
+                <TextBlock Text="Poză și scară" FontWeight="Bold" Margin="0,0,0,6"/>
+                <Button Content="Încarcă poză" Click="LoadImage_Click" Margin="0,0,0,6"/>
+                <TextBlock x:Name="ImagePathText" TextWrapping="Wrap" Margin="0,0,0,8"/>
+
+                <TextBlock Text="Lățime linie neagră (cm)"/>
+                <TextBox x:Name="LineWidthCmBox" Text="2" Margin="0,2,0,6" LostFocus="ScaleInput_LostFocus"/>
+
+                <TextBlock Text="Lățime detectată în poză (px)"/>
+                <DockPanel Margin="0,2,0,6">
+                    <Button DockPanel.Dock="Right" Content="Detectează" Click="DetectWidth_Click" Margin="6,0,0,0"/>
+                    <TextBox x:Name="LineWidthPxBox" Text="1" LostFocus="ScaleInput_LostFocus"/>
+                </DockPanel>
+
+                <TextBlock Text="Prag negru (0 negru, 255 alb)"/>
+                <TextBox x:Name="DarknessBox" Text="100" Margin="0,2,0,6" LostFocus="ScaleInput_LostFocus"/>
+
+                <TextBlock x:Name="ScaleText" TextWrapping="Wrap" Margin="0,0,0,12"/>
+
+                <TextBlock Text="Robot" FontWeight="Bold" Margin="0,0,0,6"/>
+                <TextBlock Text="Lățime o roată (cm)"/>
+                <TextBox x:Name="WheelWidthBox" Text="2.7" Margin="0,2,0,6" LostFocus="Redraw_LostFocus"/>
+                <TextBlock Text="Lățime totală, 2 roți + corp (cm)"/>
+                <TextBox x:Name="TotalWidthBox" Text="13.5" Margin="0,2,0,6" LostFocus="Redraw_LostFocus"/>
+                <TextBlock Text="Lungime totală robot (cm)"/>
+                <TextBox x:Name="LengthBox" Text="17" Margin="0,2,0,6" LostFocus="Redraw_LostFocus"/>
+                <TextBlock Text="Distanță spate până la axul motoarelor (cm)"/>
+                <TextBox x:Name="RearToAxleBox" Text="7.7" Margin="0,2,0,6" LostFocus="Redraw_LostFocus"/>
+                <TextBlock x:Name="TrackText" TextWrapping="Wrap" Margin="0,0,0,8"/>
+
+                <TextBlock Text="Detecție în fața axului: marginea îndepărtată (cm)"/>
+                <TextBox x:Name="FarBox" Text="9" Margin="0,2,0,6" LostFocus="Redraw_LostFocus"/>
+                <TextBlock Text="Detecție în fața axului: marginea apropiată (cm)"/>
+                <TextBox x:Name="NearBox" Text="7.5" Margin="0,2,0,8" LostFocus="Redraw_LostFocus"/>
+
+                <TextBlock Text="Senzor stânga, față de axul longitudinal (cm)" FontWeight="SemiBold"/>
+                <TextBlock Text="Minus = stânga centrului, plus = dreapta centrului"/>
+                <TextBlock Text="De la"/>
+                <TextBox x:Name="LeftFromBox" Text="-1.2" Margin="0,2,0,4" LostFocus="Redraw_LostFocus"/>
+                <TextBlock Text="Până la"/>
+                <TextBox x:Name="LeftToBox" Text="0" Margin="0,2,0,8" LostFocus="Redraw_LostFocus"/>
+
+                <TextBlock Text="Senzor dreapta, față de axul longitudinal (cm)" FontWeight="SemiBold"/>
+                <TextBlock Text="De la"/>
+                <TextBox x:Name="RightFromBox" Text="-0.1" Margin="0,2,0,4" LostFocus="Redraw_LostFocus"/>
+                <TextBlock Text="Până la"/>
+                <TextBox x:Name="RightToBox" Text="1.9" Margin="0,2,0,8" LostFocus="Redraw_LostFocus"/>
+
+                <TextBlock Text="Comandă" FontWeight="Bold" Margin="0,0,0,6"/>
+                <UniformGrid Columns="2" Margin="0,0,0,6">
+                    <TextBlock Text="Viteză mică" VerticalAlignment="Center"/>
+                    <TextBox x:Name="SlowBox" Text="40" Margin="4,2"/>
+                    <TextBlock Text="Viteză mare" VerticalAlignment="Center"/>
+                    <TextBox x:Name="FastBox" Text="240" Margin="4,2"/>
+                    <TextBlock Text="Viteză staționară" VerticalAlignment="Center"/>
+                    <TextBox x:Name="StationaryBox" Text="0" Margin="4,2"/>
+                    <TextBlock Text="Comp. drept" VerticalAlignment="Center"/>
+                    <TextBox x:Name="CompStraightBox" Text="0" Margin="4,2"/>
+                    <TextBlock Text="Comp. vit. mică" VerticalAlignment="Center"/>
+                    <TextBox x:Name="CompSlowBox" Text="0" Margin="4,2"/>
+                    <TextBlock Text="Comp. vit. mare" VerticalAlignment="Center"/>
+                    <TextBox x:Name="CompFastBox" Text="0" Margin="4,2"/>
+                    <TextBlock Text="Prag curbă (ms)" VerticalAlignment="Center"/>
+                    <TextBox x:Name="PragCurbaBox" Text="70" Margin="4,2"/>
+                    <TextBlock Text="Prag 00 (ms)" VerticalAlignment="Center"/>
+                    <TextBox x:Name="Prag00Box" Text="8" Margin="4,2"/>
+                    <TextBlock Text="Prag lateral (ms)" VerticalAlignment="Center"/>
+                    <TextBox x:Name="PragLateralBox" Text="0" Margin="4,2"/>
+                </UniformGrid>
+                <TextBlock Text="Calibrare viteză" FontWeight="SemiBold" Margin="0,4,0,4"/>
+                <TextBlock Text="Distanță parcursă (cm)"/>
+                <TextBox x:Name="CalibDistanceBox" Text="111.9" Margin="0,2,0,4" LostFocus="Redraw_LostFocus"/>
+                <TextBlock Text="Secunde la viteza 40"/>
+                <TextBox x:Name="Time40Box" Text="6.54" Margin="0,2,0,4" LostFocus="Redraw_LostFocus"/>
+                <TextBlock Text="Secunde la viteza 50"/>
+                <TextBox x:Name="Time50Box" Text="5.12" Margin="0,2,0,4" LostFocus="Redraw_LostFocus"/>
+                <TextBlock Text="Secunde la viteza 100"/>
+                <TextBox x:Name="Time100Box" Text="2.8" Margin="0,2,0,4" LostFocus="Redraw_LostFocus"/>
+                <TextBlock Text="Secunde la viteza 230"/>
+                <TextBox x:Name="Time230Box" Text="2.82" Margin="0,2,0,4" LostFocus="Redraw_LostFocus"/>
+                <TextBlock Text="Secunde la viteza 239"/>
+                <TextBox x:Name="Time239Box" Text="2.94" Margin="0,2,0,4" LostFocus="Redraw_LostFocus"/>
+                <TextBlock Text="Secunde la viteza 240"/>
+                <TextBox x:Name="Time240Box" Text="2.96" Margin="0,2,0,4" LostFocus="Redraw_LostFocus"/>
+                <TextBlock x:Name="SpeedCalibText" TextWrapping="Wrap" Margin="0,0,0,8"/>
+
+                <TextBlock Text="Viteză simulare"/>
+                <Slider x:Name="TimeScaleSlider" Minimum="0.25" Maximum="8" Value="1" TickFrequency="0.25" IsSnapToTickEnabled="False" Margin="0,2,0,8"/>
+
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                    <Button Content="Start" Width="80" Margin="0,0,6,0" Click="Start_Click"/>
+                    <Button Content="Pauză" Width="80" Margin="0,0,6,0" Click="Pause_Click"/>
+                    <Button Content="Reset" Width="80" Click="Reset_Click"/>
+                </StackPanel>
+                <TextBlock Text="Trage pe poză: centrul axului rămâne la apăsare, direcția e spre locul unde ridici mouse-ul." TextWrapping="Wrap" Margin="0,0,0,8"/>
+                <TextBlock x:Name="StatusText" TextWrapping="Wrap"/>
+            </StackPanel>
+        </ScrollViewer>
+
+        <Grid Grid.Column="1">
+            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Background="#ddd">
+                <Grid x:Name="Scene" MouseLeftButtonDown="Scene_MouseLeftButtonDown" MouseLeftButtonUp="Scene_MouseLeftButtonUp" MouseMove="Scene_MouseMove">
+                    <Image x:Name="TrackImage" Stretch="None" SnapsToDevicePixels="True"/>
+                    <Canvas x:Name="Overlay" IsHitTestVisible="False"/>
+                </Grid>
+            </ScrollViewer>
+            <Button Content="Memorează poziția de start"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Bottom"
+                    Margin="16"
+                    Padding="12,8"
+                    Click="MemorizeStart_Click"/>
+        </Grid>
+    </Grid>
+</Window>
