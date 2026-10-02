@@ -21,5 +21,8 @@ public static class ArduinoApi
     {
     }
 
-    public static long millis() => 0;
+    // Clock advanced by the track simulator. Stays at 0 while authoring the sketch.
+    public static long TimpSimulat { get; set; }
+
+    public static long millis() => TimpSimulat;
 }
