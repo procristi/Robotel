@@ -47,6 +47,50 @@ public static class V11HisterezisV3Sketch
     public static long momentInceputLateral;
     public static long momentInceputStabil;
 
+    // Turn for each new 00, in order. The first new 00 uses the first entry. After the last entry, 00 uses parteMemorata from the sensors.
+    private static readonly Viraj[] virajeSuprascriseLa00 =
+    {
+       /* Viraj.Stanga,
+        Viraj.Stanga,
+        Viraj.Dreapta,
+        Viraj.Stanga,
+        Viraj.Stanga,
+        Viraj.Stanga,
+        Viraj.Dreapta*/
+    };
+    private static int indexVirajSuprascris;
+
+    // Desktop simulator only. Do not translate this method to Mixly.
+    public static void ResetStare()
+    {
+        senzorStanga = 0;
+        senzorDreapta = 0;
+        virajCurent = Viraj.Inainte;
+        parteMemorata = ParteLinie.Niciuna;
+        esteCurbaTare = false;
+        momentInceputViraj = 0;
+        senzorDeIgnorat = IgnoraSenzor.Niciunul;
+        vitezaTrimisaStanga = 0;
+        vitezaTrimisaDreapta = 0;
+        combinatieSenzoriAnterioara = CombinatieSenzori.Necunoscut;
+        momentInceputDeraiere = 0;
+        momentInceputLateral = 0;
+        momentInceputStabil = 0;
+        indexVirajSuprascris = 0;
+    }
+
+    // Desktop simulator only. One decision step with sensors already read. Do not translate this method to Mixly.
+    public static void Pas(int stanga, int dreapta)
+    {
+        senzorStanga = stanga;
+        senzorDreapta = dreapta;
+        var combinatieSenzoriAcum = CitesteCombinatieSenzori();
+        PornesteCronometre(combinatieSenzoriAcum);
+        ActualizeazaViraj(combinatieSenzoriAcum);
+        AplicaMotoare();
+        combinatieSenzoriAnterioara = combinatieSenzoriAcum;
+    }
+
     public static void setup()
     {
         senzorStanga = 0;
@@ -82,6 +126,7 @@ public static class V11HisterezisV3Sketch
         momentInceputDeraiere = 0;
         momentInceputLateral = 0;
         momentInceputStabil = 0;
+        indexVirajSuprascris = 0;
 
         Pin.SetPinMode(Pins.SenzorStanga, PinMode.Input);
         Pin.SetPinMode(Pins.SenzorDreapta, PinMode.Input);
@@ -283,6 +328,7 @@ public static class V11HisterezisV3Sketch
     {
         var virajAnterior = virajCurent;
         senzorDeIgnorat = IgnoraSenzor.Niciunul;
+        AplicaSuprascriere00();
         /*
         if (linieInstabila == 1)
         {
@@ -375,6 +421,31 @@ public static class V11HisterezisV3Sketch
     private static long CitesteCronometruStartViraj()
     {
         return millis() - momentInceputViraj;
+    }
+
+    // On the first loop of a new 00, store the next listed side into parteMemorata.
+    private static void AplicaSuprascriere00()
+    {
+        if (combinatieSenzoriAnterioara == CombinatieSenzori.NicioLinie)
+        {
+            return;
+        }
+
+        if (indexVirajSuprascris >= virajeSuprascriseLa00.Length)
+        {
+            return;
+        }
+
+        var viraj = virajeSuprascriseLa00[indexVirajSuprascris];
+        indexVirajSuprascris++;
+        if (viraj == Viraj.Stanga)
+        {
+            parteMemorata = ParteLinie.Stanga;
+        }
+        else if (viraj == Viraj.Dreapta)
+        {
+            parteMemorata = ParteLinie.Dreapta;
+        }
     }
 
     private static Viraj VirajDinParteMemorata()
