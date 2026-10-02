@@ -17,10 +17,7 @@ public static class V11HisterezisV3Sketch
     public static byte vitezaMare;
     // Inner-wheel speed during a hard turn. The outer wheel stays at vitezaMare.
     public static byte vitezaStationara;
-    public static int compensareDrept;
-    public static int compensareVitMica;
-    public static int compensareVitMare;
-    public static int pragCurba;
+    public static int pragCurba=70;
     public static int prag00Ms;
     //public static int antiOscilareActiv;
     public static int pragOscilareMs;
@@ -48,19 +45,12 @@ public static class V11HisterezisV3Sketch
     public static long momentInceputDeraiere;
     public static long momentInceputLateral;
     public static long momentInceputStabil;
+    public static long[] timpOscilatie = [-1, -1, -1];
+    public static CombinatieSenzori[] istoricStari = [CombinatieSenzori.Necunoscut, CombinatieSenzori.Necunoscut, CombinatieSenzori.Necunoscut];
+    public static long momentInceputTrecere;
+    public static bool falsePositive = false;
+    public static byte stationaryAdjustment = 0;
 
-    // Turn for each new 00, in order. The first new 00 uses the first entry. After the last entry, 00 uses parteMemorata from the sensors.
-    private static readonly Viraj[] virajeSuprascriseLa00 =
-    {
-       /* Viraj.Stanga,
-        Viraj.Stanga,
-        Viraj.Dreapta,
-        Viraj.Stanga,
-        Viraj.Stanga,
-        Viraj.Stanga,
-        Viraj.Dreapta*/
-    };
-    private static int indexVirajSuprascris;
 
     // Desktop simulator only. Do not translate this method to Mixly.
     public static void ResetStare()
@@ -78,7 +68,11 @@ public static class V11HisterezisV3Sketch
         momentInceputDeraiere = 0;
         momentInceputLateral = 0;
         momentInceputStabil = 0;
-        indexVirajSuprascris = 0;
+        momentInceputTrecere = 0;
+        timpOscilatie = [-1, -1, -1];
+        istoricStari = [CombinatieSenzori.Necunoscut, CombinatieSenzori.Necunoscut, CombinatieSenzori.Necunoscut];
+        falsePositive = false;
+        stationaryAdjustment = 0;
     }
 
     // Desktop simulator only. One decision step with sensors already read. Do not translate this method to Mixly.
@@ -98,12 +92,8 @@ public static class V11HisterezisV3Sketch
         senzorStanga = 0;
         senzorDreapta = 0;
         vitezaMica = 40;
-        vitezaMare = 240;
+        vitezaMare = 235;
         vitezaStationara = 0;
-        compensareDrept = 0;
-        compensareVitMica = 0;
-        compensareVitMare = 0;
-        pragCurba = 70;
         prag00Ms = 8;
         //antiOscilareActiv = 1;
         pragOscilareMs = 120;
@@ -129,7 +119,11 @@ public static class V11HisterezisV3Sketch
         momentInceputDeraiere = 0;
         momentInceputLateral = 0;
         momentInceputStabil = 0;
-        indexVirajSuprascris = 0;
+        momentInceputTrecere = 0;
+        timpOscilatie = [-1, -1, -1];
+        istoricStari = [CombinatieSenzori.Necunoscut, CombinatieSenzori.Necunoscut, CombinatieSenzori.Necunoscut];
+        falsePositive = false;
+        stationaryAdjustment = 0;
 
         Pin.SetPinMode(Pins.SenzorStanga, PinMode.Input);
         Pin.SetPinMode(Pins.SenzorDreapta, PinMode.Input);
@@ -180,8 +174,44 @@ public static class V11HisterezisV3Sketch
         }
     }
 
+    private static void ScrieIstoric(CombinatieSenzori combinatieSenzoriAcum)
+    {
+        if (combinatieSenzoriAcum == CombinatieSenzori.Necunoscut || combinatieSenzoriAcum == CombinatieSenzori.NicioLinie)
+        {
+            return;
+        }
+
+        if (combinatieSenzoriAcum == istoricStari[2])
+        {
+            return;
+        }
+
+        // 01 or 10 after 00 starts the red interval. 01 or 10 after 11 ends it.
+        if (combinatieSenzoriAcum is CombinatieSenzori.LiniaStanga or CombinatieSenzori.LiniaDreapta
+            && istoricStari[2] != CombinatieSenzori.AmbeleLinii)
+        {
+            momentInceputTrecere = millis();
+        }
+
+        istoricStari[0] = istoricStari[1];
+        istoricStari[1] = istoricStari[2];
+        istoricStari[2] = combinatieSenzoriAcum;
+
+        if ((istoricStari[0], istoricStari[1], istoricStari[2]) is
+            (CombinatieSenzori.LiniaStanga, CombinatieSenzori.AmbeleLinii, CombinatieSenzori.LiniaDreapta)
+            or
+            (CombinatieSenzori.LiniaDreapta, CombinatieSenzori.AmbeleLinii, CombinatieSenzori.LiniaStanga))
+        {
+            var durata = millis() - momentInceputTrecere;
+            timpOscilatie[0] = timpOscilatie[1];
+            timpOscilatie[1] = timpOscilatie[2];
+            timpOscilatie[2] = durata;
+        }
+    }
     private static void ActualizeazaViraj(CombinatieSenzori combinatieSenzoriAcum)
     {
+        ScrieIstoric(combinatieSenzoriAcum);
+
         if (combinatieSenzoriAcum == CombinatieSenzori.AmbeleLinii)
         {
             Caz11();
@@ -331,14 +361,7 @@ public static class V11HisterezisV3Sketch
     {
         var virajAnterior = virajCurent;
         senzorDeIgnorat = IgnoraSenzor.Niciunul;
-        AplicaSuprascriere00();
-        /*
-        if (linieInstabila == 1)
-        {
-            virajCurent = Viraj.Drept;
-        }
-        else 
-            */
+   
         if (parteMemorata != ParteLinie.Niciuna)
         {
             if (virajAnterior != Viraj.Inainte)
@@ -374,8 +397,48 @@ public static class V11HisterezisV3Sketch
         {
             virajCurent = Viraj.Inainte;
         }
+        // Decide once when 00 starts. Short 01-11-10 means zigzag; long means a corner.
+        if (combinatieSenzoriAnterioara != CombinatieSenzori.NicioLinie)
+        {
+            var durataTrecere = GetWoobleTimeframe();
+            if (durataTrecere >= 0 && durataTrecere < 70)
+            {
+                falsePositive = true;
+                if (stationaryAdjustment <= 200)
+                {
+                    stationaryAdjustment += 20;
+                }
+            }
+            else if (durataTrecere >= 70)
+            {
+                falsePositive = false;
+                stationaryAdjustment = 0;
+            }
+        }
+      
     }
 
+    // Mean duration of the last 01-11-10 crossings. -1 until two samples exist.
+    private static long GetWoobleTimeframe()
+    {
+        var areTrecere =
+            (istoricStari[0], istoricStari[1], istoricStari[2]) is
+            (CombinatieSenzori.LiniaStanga, CombinatieSenzori.AmbeleLinii, CombinatieSenzori.LiniaDreapta)
+            or
+            (CombinatieSenzori.LiniaDreapta, CombinatieSenzori.AmbeleLinii, CombinatieSenzori.LiniaStanga);
+
+        if (!areTrecere || timpOscilatie[1] < 0 || timpOscilatie[2] < 0)
+        {
+            return -1;
+        }
+
+        if (timpOscilatie[0] < 0)
+        {
+            return (timpOscilatie[1] + timpOscilatie[2]) / 2;
+        }
+
+        return (timpOscilatie[0] + timpOscilatie[1] + timpOscilatie[2]) / 3;
+    }
     private static void AplicaMotoare()
     {
         int vitezaMotorStanga = 0;
@@ -383,30 +446,30 @@ public static class V11HisterezisV3Sketch
         switch (virajCurent)
         {
             case Viraj.Inainte:
-                vitezaMotorStanga = vitezaMare + compensareDrept;
+                vitezaMotorStanga = vitezaMare ;
                 vitezaMotorDreapta = vitezaMare;
                 break;
             case Viraj.Stanga:
                 if (esteCurbaTare == true)
                 {
-                    vitezaMotorStanga = vitezaStationara;
+                    vitezaMotorStanga = Math.Min(vitezaMare, vitezaStationara + (falsePositive ? stationaryAdjustment : 0));
                     vitezaMotorDreapta = vitezaMare;
                 }
                 else
                 {
-                    vitezaMotorStanga = vitezaMica + compensareVitMica;
+                    vitezaMotorStanga = vitezaMica ;
                     vitezaMotorDreapta = vitezaMare;
                 }
                 break;
             case Viraj.Dreapta:
                 if (esteCurbaTare == true)
                 {
-                    vitezaMotorStanga = vitezaMare + compensareVitMare;
-                    vitezaMotorDreapta = vitezaStationara;
+                    vitezaMotorStanga = vitezaMare ;
+                    vitezaMotorDreapta = Math.Min(vitezaMare, vitezaStationara + (falsePositive ? stationaryAdjustment : 0));
                 }
                 else
                 {
-                    vitezaMotorStanga = vitezaMare + compensareVitMare;
+                    vitezaMotorStanga = vitezaMare ;
                     vitezaMotorDreapta = vitezaMica;
                 }
                 break;
@@ -424,31 +487,6 @@ public static class V11HisterezisV3Sketch
     private static long CitesteCronometruStartViraj()
     {
         return millis() - momentInceputViraj;
-    }
-
-    // On the first loop of a new 00, store the next listed side into parteMemorata.
-    private static void AplicaSuprascriere00()
-    {
-        if (combinatieSenzoriAnterioara == CombinatieSenzori.NicioLinie)
-        {
-            return;
-        }
-
-        if (indexVirajSuprascris >= virajeSuprascriseLa00.Length)
-        {
-            return;
-        }
-
-        var viraj = virajeSuprascriseLa00[indexVirajSuprascris];
-        indexVirajSuprascris++;
-        if (viraj == Viraj.Stanga)
-        {
-            parteMemorata = ParteLinie.Stanga;
-        }
-        else if (viraj == Viraj.Dreapta)
-        {
-            parteMemorata = ParteLinie.Dreapta;
-        }
     }
 
     private static Viraj VirajDinParteMemorata()

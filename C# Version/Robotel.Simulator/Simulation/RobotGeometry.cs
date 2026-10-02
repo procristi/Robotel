@@ -19,9 +19,6 @@ public sealed class RobotGeometry
     public int VitezaMica { get; init; }
     public int VitezaMare { get; init; }
     public int VitezaStationara { get; init; }
-    public int CompensareDrept { get; init; }
-    public int CompensareVitMica { get; init; }
-    public int CompensareVitMare { get; init; }
     public int PragCurbaMs { get; init; }
     public int Prag00Ms { get; init; }
     public int PragLateralMs { get; init; }

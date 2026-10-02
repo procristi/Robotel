@@ -78,9 +78,6 @@ public sealed class CourseSimulator
         V11HisterezisV3Sketch.vitezaMica = (byte)Math.Clamp(geometry.VitezaMica, 0, 255);
         V11HisterezisV3Sketch.vitezaMare = (byte)Math.Clamp(geometry.VitezaMare, 0, 255);
         V11HisterezisV3Sketch.vitezaStationara = (byte)Math.Clamp(geometry.VitezaStationara, 0, 255);
-        V11HisterezisV3Sketch.compensareDrept = geometry.CompensareDrept;
-        V11HisterezisV3Sketch.compensareVitMica = geometry.CompensareVitMica;
-        V11HisterezisV3Sketch.compensareVitMare = geometry.CompensareVitMare;
         V11HisterezisV3Sketch.pragCurba = geometry.PragCurbaMs;
         V11HisterezisV3Sketch.prag00Ms = geometry.Prag00Ms;
         V11HisterezisV3Sketch.pragLateralMs = geometry.PragLateralMs;
