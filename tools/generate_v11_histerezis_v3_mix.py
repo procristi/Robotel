@@ -213,9 +213,205 @@ def remember_side_after_wait(side):
     )
 
 
+def creste_aliniere():
+    creste_mica = controls_if(
+        [
+            (
+                compare("LT", var_get("vitezaMica"), var_get("pragVitezaMicaMax")),
+                chain(
+                    [
+                        var_set("vitezaMica", arith("ADD", var_get("vitezaMica"), var_get("pasVitezaMica"))),
+                        controls_if(
+                            [
+                                (
+                                    compare("GT", var_get("vitezaMica"), var_get("pragVitezaMicaMax")),
+                                    var_set("vitezaMica", var_get("pragVitezaMicaMax")),
+                                )
+                            ]
+                        ),
+                    ]
+                ),
+            )
+        ]
+    )
+    creste_prag = controls_if(
+        [
+            (
+                compare("LT", var_get("pragCurba"), num(200)),
+                chain(
+                    [
+                        var_set("pragCurba", arith("ADD", var_get("pragCurba"), num(40))),
+                        controls_if(
+                            [
+                                (
+                                    compare("GT", var_get("pragCurba"), num(200)),
+                                    set_num("pragCurba", 200),
+                                )
+                            ]
+                        ),
+                    ]
+                ),
+            )
+        ]
+    )
+    return chain(
+        [
+            creste_mica,
+            creste_prag,
+            var_set("vitezaStationaraInvatata", var_get("vitezaMica")),
+            var_set("vitezaStationara", var_get("vitezaMica")),
+        ]
+    )
+
+
+def incheie_esantion_trecere():
+    calibrare = chain(
+        [
+            var_set("sumaTimpTrecere", arith("ADD", var_get("sumaTimpTrecere"), var_get("durataTrecere"))),
+            var_set("numarEsantioaneTrecere", arith("ADD", var_get("numarEsantioaneTrecere"), num(1))),
+            controls_if(
+                [
+                    (
+                        compare("EQ", var_get("numarEsantioaneTrecere"), var_get("pragEsantioaneTrecere")),
+                        chain(
+                            [
+                                var_set(
+                                    "timpNormalTrecere",
+                                    arith("DIVIDE", var_get("sumaTimpTrecere"), var_get("pragEsantioaneTrecere")),
+                                ),
+                                creste_aliniere(),
+                            ]
+                        ),
+                    )
+                ]
+            ),
+        ]
+    )
+    dupa_calibrare = controls_if(
+        [
+            (
+                compare(
+                    "LT",
+                    arith("MULTIPLY", var_get("durataTrecere"), num(2)),
+                    arith("MULTIPLY", var_get("timpNormalTrecere"), num(3)),
+                ),
+                creste_aliniere(),
+            )
+        ]
+    )
+    return chain(
+        [
+            var_set("durataTrecere", millis_minus("momentInceputTrecere")),
+            var_set("ultimaDurataTrecere", var_get("durataTrecere")),
+            controls_if(
+                [
+                    (
+                        compare("LTE", var_get("durataTrecere"), num(0)),
+                        chain([set_num("parteStartTrecere", 0), set_num("aTrecutPrin11LaTrecere", 0)]),
+                    )
+                ],
+                chain(
+                    [
+                        controls_if(
+                            [(compare("LT", var_get("numarEsantioaneTrecere"), var_get("pragEsantioaneTrecere")), calibrare)],
+                            dupa_calibrare,
+                        ),
+                        set_num("parteStartTrecere", 0),
+                        set_num("aTrecutPrin11LaTrecere", 0),
+                    ]
+                ),
+            ),
+        ]
+    )
+
+
+def inregistreaza_trecere_laterala(side):
+    start = chain(
+        [
+            var_set("ultimaDurata00", millis_minus("momentInceputDeraiere")),
+            var_set("numarIesiri00", arith("ADD", var_get("numarIesiri00"), num(1))),
+            set_millis("momentInceputTrecere"),
+            set_num("parteStartTrecere", side),
+            set_num("aTrecutPrin11LaTrecere", 0),
+            controls_if(
+                [
+                    (
+                        logic_and(eq_num("timpNormalTrecere", 0), compare("GTE", var_get("numarIesiri00"), num(4))),
+                        creste_aliniere(),
+                    )
+                ]
+            ),
+        ]
+    )
+    complete = controls_if(
+        [
+            (
+                logic_and(
+                    logic_and(eq_num("combinatieSenzoriAnterioara", 3), eq_num("aTrecutPrin11LaTrecere", 1)),
+                    logic_and(neq_num("parteStartTrecere", 0), neq_num("parteStartTrecere", side)),
+                ),
+                incheie_esantion_trecere(),
+            )
+        ]
+    )
+    return controls_if([(eq_num("combinatieSenzoriAnterioara", 0), start)], complete)
+
+
+def marcheaza_colt_daca_00_lung():
+    return chain(
+        [
+            var_set("pragColtTrecere", var_get("ultimaDurataTrecere")),
+            controls_if(
+                [
+                    (
+                        compare("GT", var_get("timpNormalTrecere"), var_get("pragColtTrecere")),
+                        var_set("pragColtTrecere", var_get("timpNormalTrecere")),
+                    )
+                ]
+            ),
+            controls_if(
+                [
+                    (
+                        neq_num("pragColtTrecere", 0),
+                        chain(
+                            [
+                                var_set("pragColtTrecere", arith("MULTIPLY", var_get("pragColtTrecere"), num(2))),
+                                controls_if(
+                                    [
+                                        (
+                                            compare("LT", var_get("pragColtTrecere"), var_get("pragCurba")),
+                                            var_set("pragColtTrecere", var_get("pragCurba")),
+                                        )
+                                    ]
+                                ),
+                                controls_if(
+                                    [
+                                        (
+                                            compare(
+                                                "GTE",
+                                                millis_minus("momentInceputDeraiere"),
+                                                var_get("pragColtTrecere"),
+                                            ),
+                                            chain([set_num("esteCurbaTare", 1), set_num("vitezaStationara", 0)]),
+                                        )
+                                    ]
+                                ),
+                            ]
+                        ),
+                    )
+                ]
+            ),
+        ]
+    )
+
+
 def caz11():
     return chain(
         [
+            set_num("aTrecutPrin11LaTrecere", 1),
+            controls_if(
+                [(neq_num("timpNormalTrecere", 0), var_set("vitezaStationara", var_get("vitezaStationaraInvatata")))]
+            ),
             set_num("virajCurent", 0),
             set_num("parteMemorata", 0),
             set_num("esteCurbaTare", 0),
@@ -258,7 +454,43 @@ def caz_lateral(ignore_code, straight_side, cross_memory, cross_ignore, turn_cod
         ],
         turn_body,
     )
-    return chain([var_set("virajAnterior", var_get("virajCurent")), decision])
+    return chain(
+        [
+            var_set("virajAnterior", var_get("virajCurent")),
+            inregistreaza_trecere_laterala(straight_side),
+            decision,
+        ]
+    )
+
+
+def inregistreaza_oscilatie_00():
+    opposite = chain(
+        [
+            var_set("numarOscilatii00", arith("ADD", var_get("numarOscilatii00"), num(1))),
+            creste_aliniere(),
+        ]
+    )
+    body = chain(
+        [
+            controls_if(
+                [
+                    (
+                        logic_and(neq_num("parteUltim00", 0), compare("NEQ", var_get("parteUltim00"), var_get("parteMemorata"))),
+                        opposite,
+                    )
+                ]
+            ),
+            var_set("parteUltim00", var_get("parteMemorata")),
+        ]
+    )
+    return controls_if(
+        [
+            (
+                logic_and(neq_num("combinatieSenzoriAnterioara", 0), neq_num("parteMemorata", 0)),
+                body,
+            )
+        ]
+    )
 
 
 def caz00():
@@ -288,6 +520,8 @@ def caz00():
         [
             var_set("virajAnterior", var_get("virajCurent")),
             set_num("senzorDeIgnorat", 0),
+            inregistreaza_oscilatie_00(),
+            marcheaza_colt_daca_00_lung(),
             controls_if([(neq_num("parteMemorata", 0), has_memory)], set_num("virajCurent", 0)),
         ]
     )
@@ -516,6 +750,24 @@ def setup_body():
         ("momentInceputDeraiere", "long", 0),
         ("momentInceputLateral", "long", 0),
         ("momentInceputStabil", "long", 0),
+        ("momentInceputTrecere", "long", 0),
+        ("parteStartTrecere", "int", 0),
+        ("aTrecutPrin11LaTrecere", "int", 0),
+        ("numarEsantioaneTrecere", "int", 0),
+        ("sumaTimpTrecere", "long", 0),
+        ("timpNormalTrecere", "long", 0),
+        ("pragEsantioaneTrecere", "int", 2),
+        ("pasStationara", "int", 20),
+        ("vitezaStationaraInvatata", "byte", 0),
+        ("pragColtTrecere", "long", 0),
+        ("durataTrecere", "long", 0),
+        ("ultimaDurataTrecere", "long", 0),
+        ("ultimaDurata00", "long", 0),
+        ("numarIesiri00", "int", 0),
+        ("parteUltim00", "int", 0),
+        ("numarOscilatii00", "int", 0),
+        ("pragVitezaMicaMax", "int", 160),
+        ("pasVitezaMica", "int", 30),
         ("combinatieSenzoriAcum", "int", 0),
         ("virajAnterior", "int", 0),
         ("vitezaMotorStanga", "int", 0),
